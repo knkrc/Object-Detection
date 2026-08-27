@@ -1,0 +1,8 @@
+# Ana bagimliliklar. Kurulum:
+#   python -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+
+ultralytics>=8.3        # YOLOv8 modeli (torch, torchvision, opencv'yi de getirir)
+streamlit>=1.40         # web arayuzu
+opencv-python>=4.10     # resim/video okuma-yazma
+numpy>=1.26

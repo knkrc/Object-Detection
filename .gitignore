@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Model agirliklari (calistiginca otomatik iner)
+models/*.pt
+*.pt
+
+# Uygulama ciktilari
+outputs/
+*.mp4
+!samples/*.mp4
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/secrets.toml
