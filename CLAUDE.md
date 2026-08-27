@@ -11,7 +11,8 @@ GitHub portfolyosu / CV için geliştirilen bir **nesne tespiti (object detectio
 ve **takip (tracking)** uygulaması. YOLOv8'in COCO ile eğitilmiş hazır modelini
 kullanarak resim, video ve canlı kamera üzerinde 80 sınıfı tespit eder; takip
 modunda her nesneye kalıcı ID verip benzersiz sayım ve çizgi geçişi hesaplar.
-Arayüz Streamlit.
+Ayrıca African Wildlife veri setiyle fine-tune edilmiş kendi modelimiz de
+arayüzden seçilebiliyor. Arayüz Streamlit.
 
 **Hedef:** Çalışan, gösterilebilir, anlaşılır bir proje. Aşırı mühendislik yok —
 kod okunduğunda ne yaptığı anlaşılmalı.
@@ -25,6 +26,7 @@ kod okunduğunda ne yaptığı anlaşılmalı.
 | ByteTrack (+ `lap`) | Takip için; hızlı, CPU'da rahat çalışır, ultralytics'e gömülü |
 | OpenCV | Resim/video okuma-yazma, kare işleme |
 | Streamlit | Hızlı, görsel arayüz — portfolyoda ekran görüntüsü almak kolay |
+| MPS (Apple Silicon) | Eğitim burada dönüyor; Colab notebook'u GPU alternatifi |
 
 ## Komutlar
 
@@ -32,6 +34,10 @@ kod okunduğunda ne yaptığı anlaşılmalı.
 source .venv/bin/activate        # ortamı aktif et
 streamlit run app.py             # uygulamayı çalıştır
 python scripts/download_samples.py   # örnek görselleri indir
+
+python scripts/train.py --epochs 30  # fine-tune (models/<isim>.pt üretir)
+python scripts/evaluate.py           # metrikler → docs/metrics.{json,md} + docs/plots/
+python scripts/compare.py            # önce/sonra görselleri → docs/comparison/
 ```
 
 ## Mimari kararlar
@@ -56,6 +62,16 @@ python scripts/download_samples.py   # örnek görselleri indir
   `@st.cache_resource` ile paylaşıldığı için `TrackSession.__post_init__`
   ultralytics'in tracker durumunu da sıfırlar — yoksa önceki videonun ID'leri
   yenisine sızar.
+- **Eğitilen modeller `models/` altında, arayüz onları kendi bulur.**
+  `config.custom_models()` hazır listede olmayan `.pt` dosyalarını tarar ve
+  "Özel: <isim>" olarak model listesine ekler. Yeni bir model eğitmek arayüzde
+  hiçbir kod değişikliği gerektirmiyor — dosyayı `models/`'a koymak yeterli.
+- **`models/african-wildlife.pt` bilerek git'e dahil (5.9 MB).** `.gitignore`'da
+  `*.pt` kuralına özel bir istisna var. Repoyu klonlayan biri 31 dakika eğitim
+  beklemeden "Özel:" modelini deneyebilsin diye.
+- **Metrikler ve grafikler `docs/` altında commit'leniyor.** `runs/` git'e
+  girmiyor; `evaluate.py` gösterilmeye değer grafikleri `docs/plots/`'a
+  kopyalıyor. README ve Streamlit sekmesi aynı dosyaları okuyor.
 - **Çizgi geçişi vektörel çarpımın işaretiyle bulunur.** Nesne merkezinin
   çizgiye göre tarafı iki kare arasında değiştiyse geçmiştir; işaretin yönü de
   giriş/çıkış ayrımını verir. Kesişim hesabı yapmaya gerek yok.
@@ -148,14 +164,68 @@ python scripts/download_samples.py   # örnek görselleri indir
 
 ---
 
+### ✅ M3 — Kendi veri setiyle fine-tune (2026-08-28)
+
+**Veri seti:** `african-wildlife` (ultralytics'in hazır seti, 100 MB, 4 sınıf:
+buffalo, elephant, rhino, zebra). Seçim sebebi: elephant ve zebra COCO'da var,
+buffalo ve rhino yok — "önce/sonra" farkı hem gerçek hem de dürüst görünüyor.
+API anahtarı gerektirmiyor, `data=african-wildlife.yaml` deyince kendi iniyor.
+
+**Yapılanlar**
+- `scripts/train.py` — fine-tune CLI'ı. Cihazı otomatik seçiyor (cuda → mps → cpu),
+  `patience` ile erken durdurma, bitince en iyi ağırlığı `models/<isim>.pt`'ye
+  kopyalıyor.
+- `scripts/evaluate.py` — doğrulama metriklerini `docs/metrics.json` ve
+  `docs/metrics.md`'ye yazıyor, eğitim grafiklerini `docs/plots/`'a kopyalıyor.
+- `scripts/compare.py` — hazır COCO modeli ile kendi modelimizi aynı görsellerde
+  yan yana koyuyor.
+- `notebooks/train_colab.ipynb` — aynı eğitimin Colab GPU sürümü.
+- `config.custom_models()` + `app.py` kenar çubuğu — eğitilen model tüm
+  sekmelerde (resim/video/webcam/takip) kullanılabiliyor.
+- `app.py` "📊 Model performansı" sekmesi — metrik kartları, sınıf tablosu,
+  önce/sonra seçici, eğitim grafikleri.
+
+**Sonuçlar** (YOLOv8n, 30 epoch, 640px, MPS, 31 dakika)
+
+| Metrik | Değer |
+|---|---|
+| mAP50 | 0.957 |
+| mAP50-95 | 0.791 |
+| Precision | 0.954 |
+| Recall | 0.895 |
+
+Sınıf bazında mAP50: buffalo 0.970, elephant 0.927, rhino 0.972, zebra 0.958.
+
+**Önce/sonra kanıtı:** COCO modeli gergedanı `cow 0.56` + hayalet bir `horse`
+olarak görüyor, kendi modelimiz `rhino 0.97` diyor. Bufalo için de COCO `cow`
+diyor. Elephant ve zebra'da ikisi de doğru — beklenen, çünkü bunlar COCO'da var.
+
+**Yol boyunca düzeltilen**
+- `compare.py` veri setinin `valid/images` düzeninde olduğunu varsayıyordu, oysa
+  bu set `images/val` kullanıyor. Yaygın dört düzeni de deneyen bir arama eklendi.
+- Rastgele görsel seçimi veri setinde çok olan sınıfa (fil) yığılıyordu ve
+  karşılaştırma anlamsız görünüyordu. Etiket dosyalarından sınıf okunup her
+  sınıftan eşit örnek alınacak şekilde değiştirildi.
+- Karşılaştırma başlıkları sadece tespit *sayısını* yazıyordu; asıl fark
+  etiketlerde olduğu için başlıklara etiket listesi konuldu.
+- Veri setindeki dosya adlarında boşluk ve parantez var (`3 (226).jpg`) — çıktılar
+  içeriğe göre yeniden adlandırılıyor (`rhino.jpg`, `buffalo-2.jpg`).
+
+**Bilinen eksikler / notlar**
+- 30 epoch keyfi bir sayı; `patience=15` erken durdurma tetiklenmedi, yani daha
+  uzun eğitim biraz daha iyileştirebilir.
+- Sadece YOLOv8n denendi. `--model yolov8s.pt` ile daha büyük model muhtemelen
+  mAP50-95'i yükseltir.
+- Colab notebook'u yazıldı ama Colab'da **çalıştırılmadı** — yerelde aynı
+  ultralytics çağrılarını kullanıyor, yine de ilk kullanımda gözden geçir.
+- `docs/` şu an tek bir modelin sonuçlarını tutuyor. İkinci bir model eğitilirse
+  dosyalar üzerine yazılır; gerekirse model adına göre klasörlenmeli.
+
+---
+
 ## Sıradaki milestone'lar
 
-### 🔜 M3 — Kendi veri setiyle fine-tune
-Küçük bir özel veri seti (2-3 sınıf) toplayıp/etiketleyip YOLOv8'i fine-tune etmek.
-`train.py` + `data.yaml` + eğitim metrikleri (mAP, confusion matrix) README'de.
-"Hazır model kullandı" ile "model eğitti" arasındaki farkı gösterir.
-
-### 📋 M4 — Testler + CI
+### 🔜 M4 — Testler + CI
 `pytest` ile `Detector` ve `video.py` için birkaç anlamlı test
 (örn. bilinen görselde beklenen sınıflar bulunuyor mu). GitHub Actions ile
 her push'ta çalışsın.
@@ -170,4 +240,6 @@ README'ye "Live Demo" rozeti — işe alım yapan kişi kodu indirmeden deneyebi
 - Tespit sonuçlarını JSON olarak dışa aktarma (takip CSV'si M2'de eklendi).
 - BoT-SORT seçeneği: uzun süre kaybolan nesneyi re-ID ile hatırlar.
 - İngilizce README (uluslararası başvurular için).
+- Kendi topladığın görsellerle ikinci bir veri seti (M3 altyapısı hazır).
+- Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
 - Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.

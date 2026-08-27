@@ -8,6 +8,9 @@ venv/
 # Model agirliklari (calistiginca otomatik iner)
 models/*.pt
 *.pt
+# ...ama kendi egittigimiz model repoda dursun: klonlayan kisi
+# 31 dakika egitim beklemeden "Ozel:" modelini deneyebilsin (5.9 MB).
+!models/african-wildlife.pt
 
 # Uygulama ciktilari
 outputs/
@@ -21,3 +24,7 @@ outputs/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Egitim
+datasets/
+runs/

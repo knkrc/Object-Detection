@@ -17,6 +17,8 @@ Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı 
 | 📹 **Webcam** | Bilgisayar kamerasından canlı tespit |
 | 🖼️ **Örnekler** | Repoda hazır gelen görsellerle tek tıkla dene |
 | 🎯 **Takip** | ByteTrack ile kalıcı ID, benzersiz sayım, çizgi geçişi, hareket izi |
+| 🧠 **Kendi modelin** | Fine-tune edilmiş model, arayüzde "Özel:" olarak seçilebilir |
+| 📊 **Performans** | mAP tablosu, eğitim grafikleri, önce/sonra karşılaştırması |
 | ⚙️ **Ayarlar** | Model boyutu (n/s/m), güven eşiği ve sınıf filtresi |
 
 ### Takip modu neler veriyor?
@@ -51,6 +53,65 @@ streamlit run app.py
 Tarayıcıda `http://localhost:8501` açılır. İlk çalıştırmada model ağırlığı (~6 MB)
 otomatik olarak indirilip `models/` klasörüne kaydedilir.
 
+---
+
+## Kendi modelimiz — African Wildlife
+
+Hazır COCO modeli 80 sınıf tanıyor ama bufalo ile gergedanı bilmiyor: gergedana
+"inek", bufaloya "inek" diyor. Aynı modeli 1500 görsellik bir veri setiyle
+fine-tune ederek 4 Afrika hayvanını tanıyan bir model eğittik.
+
+![Önce / sonra](docs/comparison/rhino.jpg)
+
+*Solda hazır COCO modeli (`cow 0.56` + hayalet bir `horse`), sağda kendi modelimiz (`rhino 0.97`).*
+
+### Sonuçlar
+
+YOLOv8n, 30 epoch, 640px — MacBook'ta MPS ile **31 dakika**. Doğrulama seti: 225 görsel, 379 nesne.
+
+| Metrik | Değer |
+|---|---|
+| **mAP50** | **0.957** |
+| mAP50-95 | 0.791 |
+| Precision | 0.954 |
+| Recall | 0.895 |
+
+| Sınıf | mAP50 | mAP50-95 | Precision | Recall |
+|---|---|---|---|---|
+| buffalo | 0.970 | 0.817 | 1.000 | 0.879 |
+| elephant | 0.927 | 0.741 | 0.859 | 0.879 |
+| rhino | 0.972 | 0.856 | 0.976 | 0.937 |
+| zebra | 0.958 | 0.749 | 0.981 | 0.884 |
+
+<details>
+<summary>Eğitim grafikleri</summary>
+
+![Eğitim eğrileri](docs/plots/results.png)
+![Confusion matrix](docs/plots/confusion_matrix_normalized.png)
+
+</details>
+
+Eğitilmiş model repoda (`models/african-wildlife.pt`, 5.9 MB) — klonlayıp
+arayüzde **"Özel: african-wildlife"** seçerek hemen deneyebilirsin.
+
+### Kendin eğitmek istersen
+
+```bash
+python scripts/train.py --epochs 30        # eğit (models/<isim>.pt olarak kaydeder)
+python scripts/evaluate.py                 # ölç, docs/metrics.* üret
+python scripts/compare.py                  # önce/sonra görselleri üret
+```
+
+Kendi veri setinle:
+
+```bash
+python scripts/train.py --data yol/data.yaml --model yolov8s.pt --epochs 50
+```
+
+GPU'da eğitmek için [`notebooks/train_colab.ipynb`](notebooks/train_colab.ipynb) —
+Colab'ın ücretsiz T4'ünde aynı eğitim dakikalar sürer. İnen `best.pt` dosyasını
+`models/` klasörüne koyman yeterli; arayüz onu otomatik bulur.
+
 ## Proje yapısı
 
 ```
@@ -62,9 +123,16 @@ Object-Detection/
 │   ├── tracker.py              # takip oturumu, çizgi sayacı, izler
 │   └── video.py                # video dosyasını kare kare işleme
 ├── scripts/
-│   └── download_samples.py     # örnek görselleri indirir
+│   ├── download_samples.py     # örnek görselleri indirir
+│   ├── train.py                # fine-tune
+│   ├── evaluate.py             # metrikler → docs/
+│   └── compare.py              # önce/sonra görselleri
+├── notebooks/
+│   └── train_colab.ipynb       # GPU'da eğitim
+├── docs/                       # metrikler, grafikler, karşılaştırmalar
 ├── samples/                    # örnek görseller
-├── models/                     # model ağırlıkları (git'e girmez)
+├── models/                     # ağırlıklar (kendi modelimiz hariç git'e girmez)
+├── datasets/, runs/            # veri seti ve eğitim çıktıları (git'e girmez)
 ├── outputs/                    # işlenmiş videolar (git'e girmez)
 ├── requirements.txt
 └── CLAUDE.md                   # geliştirme günlüğü / yol haritası
@@ -89,7 +157,7 @@ Object-Detection/
 
 - [x] **M1** — Resim, video, webcam ve örneklerle çalışan temel uygulama
 - [x] **M2** — Nesne takibi: ByteTrack, benzersiz sayım, çizgi geçişi, hareket izi
-- [ ] **M3** — Kendi veri setiyle fine-tune (özel sınıflar)
+- [x] **M3** — Kendi veri setiyle fine-tune: African Wildlife, mAP50 0.957
 - [ ] **M4** — Testler + GitHub Actions
 - [ ] **M5** — Docker + canlı demo (Streamlit Cloud / Hugging Face Spaces)
 

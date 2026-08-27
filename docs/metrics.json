@@ -1,0 +1,40 @@
+{
+  "model": "african-wildlife.pt",
+  "data": "african-wildlife.yaml",
+  "genel": {
+    "mAP50": 0.9569,
+    "mAP50-95": 0.7908,
+    "precision": 0.9538,
+    "recall": 0.8948
+  },
+  "sinif_bazinda": [
+    {
+      "sinif": "buffalo",
+      "mAP50": 0.9703,
+      "mAP50-95": 0.8166,
+      "precision": 1.0,
+      "recall": 0.8794
+    },
+    {
+      "sinif": "elephant",
+      "mAP50": 0.9269,
+      "mAP50-95": 0.7407,
+      "precision": 0.8593,
+      "recall": 0.8791
+    },
+    {
+      "sinif": "rhino",
+      "mAP50": 0.9721,
+      "mAP50-95": 0.8563,
+      "precision": 0.9755,
+      "recall": 0.9367
+    },
+    {
+      "sinif": "zebra",
+      "mAP50": 0.9582,
+      "mAP50-95": 0.7494,
+      "precision": 0.9805,
+      "recall": 0.884
+    }
+  ]
+}
