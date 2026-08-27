@@ -3,7 +3,10 @@
 Calistirmak icin:  streamlit run app.py
 """
 
+import csv
+import io
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 import cv2
@@ -14,14 +17,17 @@ from src.config import (
     AVAILABLE_MODELS,
     DEFAULT_CONF,
     DEFAULT_FRAME_STRIDE,
+    DEFAULT_LINE_POSITION,
     DEFAULT_MODEL,
+    DEFAULT_TRAIL_LENGTH,
     IMAGE_TYPES,
     OUTPUTS_DIR,
     SAMPLES_DIR,
     VIDEO_TYPES,
 )
 from src.detector import Detector, summarize
-from src.video import process_video
+from src.tracker import TrackSession, line_from_ratio
+from src.video import process_video, video_info
 
 st.set_page_config(page_title="Object Detection", page_icon="🎯", layout="wide")
 
@@ -42,6 +48,10 @@ def read_upload(uploaded) -> np.ndarray:
     return cv2.imdecode(buffer, cv2.IMREAD_COLOR)
 
 
+def as_counts(counts: dict[str, int]) -> str:
+    return ", ".join(f"{n}× {label}" for label, n in counts.items())
+
+
 def show_results(original_bgr, annotated_bgr, detections, download_name="sonuc.png"):
     """Orijinal / sonuc karsilastirmasi + tespit ozeti."""
     left, right = st.columns(2)
@@ -56,8 +66,7 @@ def show_results(original_bgr, annotated_bgr, detections, download_name="sonuc.p
         st.info("Bu esikte hicbir nesne bulunamadi. Guven esigini dusurmeyi dene.")
         return
 
-    counts = summarize(detections)
-    st.write("**Bulunanlar:** " + ", ".join(f"{n}× {label}" for label, n in counts.items()))
+    st.write("**Bulunanlar:** " + as_counts(summarize(detections)))
 
     with st.expander("Tespit detaylari"):
         st.dataframe(
@@ -82,6 +91,98 @@ def show_results(original_bgr, annotated_bgr, detections, download_name="sonuc.p
             data=encoded.tobytes(),
             file_name=download_name,
             mime="image/png",
+        )
+
+
+def tracking_controls(key: str) -> dict:
+    """Takip modu ayarlarini cizer, secimleri sozluk olarak doner."""
+    enabled = st.toggle(
+        "🎯 Takip modu",
+        key=f"{key}_track",
+        help="Her nesneye kalici bir ID verir; ayni nesneyi iki kez saymadan "
+        "'kac farkli nesne gecti' sorusunu cevaplar.",
+    )
+    if not enabled:
+        return {"enabled": False}
+
+    left, right = st.columns(2)
+    with left:
+        trails = st.checkbox("Hareket izi ciz", value=True, key=f"{key}_trails")
+        trail_length = st.slider(
+            "Iz uzunlugu (kare)", 8, 96, DEFAULT_TRAIL_LENGTH, key=f"{key}_trail_len",
+            disabled=not trails,
+        )
+    with right:
+        line_on = st.checkbox("Cizgi gecis sayimi", value=False, key=f"{key}_line")
+        orientation = st.radio(
+            "Cizgi yonu", ["yatay", "dikey"], horizontal=True,
+            key=f"{key}_orient", disabled=not line_on,
+        )
+        position = st.slider(
+            "Cizgi konumu", 0.05, 0.95, DEFAULT_LINE_POSITION, step=0.05,
+            key=f"{key}_pos", disabled=not line_on,
+        )
+
+    return {
+        "enabled": True,
+        "trails": trails,
+        "trail_length": trail_length,
+        "line": {"orientation": orientation, "position": position} if line_on else None,
+    }
+
+
+def build_session(detector, options, conf, keep_classes, fps, size) -> TrackSession:
+    """Arayuz secimlerinden bir TrackSession kurar."""
+    line = None
+    if options.get("line"):
+        line = line_from_ratio(
+            size[0], size[1], options["line"]["orientation"], options["line"]["position"]
+        )
+    return TrackSession(
+        detector=detector,
+        conf=conf,
+        keep_classes=keep_classes,
+        fps=fps,
+        trail_length=options["trail_length"],
+        draw_trails=options["trails"],
+        line=line,
+    )
+
+
+def show_tracking_summary(session: TrackSession) -> None:
+    """Benzersiz sayim + cizgi sayaci + sure tablosu."""
+    summary = session.summary()
+
+    columns = st.columns(3 if summary["cizgi"] else 2)
+    columns[0].metric("Farkli nesne", summary["toplam_nesne"])
+    columns[1].metric("Islenen kare", summary["kare"])
+    if summary["cizgi"]:
+        counts = summary["cizgi"]
+        columns[2].metric(
+            "Cizgiyi gecen",
+            sum(counts.values()),
+            help=", ".join(f"{name}: {n}" for name, n in counts.items()),
+        )
+
+    if summary["unique"]:
+        st.write("**Toplam farkli nesne:** " + as_counts(summary["unique"]))
+    else:
+        st.info("Hicbir nesne takip edilemedi. Guven esigini dusurmeyi dene.")
+        return
+
+    rows = session.durations()
+    with st.expander(f"Nesne basina sure ({len(rows)} ID)"):
+        st.dataframe(rows, use_container_width=True)
+
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+        st.download_button(
+            "Takip verisini CSV indir",
+            data=buffer.getvalue(),
+            file_name="takip_verisi.csv",
+            mime="text/csv",
         )
 
 
@@ -123,7 +224,7 @@ st.sidebar.caption(f"Model: `{detector.weights}` · {len(detector.class_names)} 
 # --------------------------------------------------------------------------
 
 st.title("🎯 Object Detection")
-st.caption("YOLOv8 ile resim, video ve canli kamera uzerinde nesne tespiti.")
+st.caption("YOLOv8 ile resim, video ve canli kamera uzerinde nesne tespiti ve takibi.")
 
 tab_image, tab_video, tab_webcam, tab_samples = st.tabs(
     ["📷 Resim", "🎬 Video", "📹 Webcam", "🖼️ Ornekler"]
@@ -146,13 +247,16 @@ with tab_image:
 # --- Video ---------------------------------------------------------------
 with tab_video:
     uploaded_video = st.file_uploader("Bir video yukle", type=VIDEO_TYPES, key="video_upload")
+
     stride = st.slider(
         "Kare atlama",
         min_value=1,
         max_value=5,
         value=DEFAULT_FRAME_STRIDE,
-        help="1 = her kareyi isle (yavas). 3 = her 3 karede bir tespit yap (hizli).",
+        help="1 = her kareyi isle (yavas). 3 = her 3 karede bir isle (hizli). "
+        "Takip modunda yuksek deger ID kararliligini bozabilir.",
     )
+    track_options = tracking_controls("video")
 
     if uploaded_video and st.button("Videoyu isle", type="primary"):
         suffix = Path(uploaded_video.name).suffix
@@ -164,14 +268,36 @@ with tab_video:
         progress = st.progress(0.0, text="Kareler isleniyor...")
 
         try:
+            info = video_info(source)
+            session = None
+
+            if track_options["enabled"]:
+                # Kare atlanirsa sure hesabi icin efektif fps kullanilir.
+                session = build_session(
+                    detector, track_options, conf, keep_classes,
+                    fps=info["fps"] / stride,
+                    size=(info["width"], info["height"]),
+                )
+
+                def on_frame(frame):
+                    annotated, _ = session.step(frame)
+                    return annotated
+            else:
+                counts: Counter[str] = Counter()
+
+                def on_frame(frame):
+                    annotated, detections = detector.detect(frame, conf, keep_classes)
+                    counts.update(d.label for d in detections)
+                    return annotated
+
             stats = process_video(
-                detector,
                 source,
                 target,
-                conf=conf,
-                keep_classes=keep_classes,
+                on_frame,
                 stride=stride,
-                on_progress=lambda p: progress.progress(p, text=f"Kareler isleniyor... %{p * 100:.0f}"),
+                on_progress=lambda p: progress.progress(
+                    p, text=f"Kareler isleniyor... %{p * 100:.0f}"
+                ),
             )
         except RuntimeError as exc:
             progress.empty()
@@ -179,11 +305,12 @@ with tab_video:
         else:
             progress.empty()
             st.success(f"{stats['frames']} kare islendi ({stats['fps']:.0f} FPS).")
-            if stats["counts"]:
-                st.write(
-                    "**Toplam tespit:** "
-                    + ", ".join(f"{n}× {label}" for label, n in stats["counts"].items())
-                )
+
+            if session is not None:
+                show_tracking_summary(session)
+            elif counts:
+                st.write("**Toplam tespit:** " + as_counts(dict(counts.most_common())))
+
             st.video(str(target))
             st.download_button(
                 "Videoyu indir",
@@ -201,6 +328,8 @@ with tab_webcam:
         "macOS'ta ilk calistirmada kamera izni istenir. Izin verdikten sonra "
         "terminali yeniden baslatman gerekebilir."
     )
+
+    webcam_options = tracking_controls("webcam")
 
     if "webcam_on" not in st.session_state:
         st.session_state.webcam_on = False
@@ -220,6 +349,18 @@ with tab_webcam:
             st.session_state.webcam_on = False
             st.error("Kamera acilamadi. Baska bir uygulama kullaniyor olabilir.")
         else:
+            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
+            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
+            live_session = (
+                build_session(
+                    detector, webcam_options, conf, keep_classes,
+                    fps=capture.get(cv2.CAP_PROP_FPS) or 25.0,
+                    size=(width, height),
+                )
+                if webcam_options["enabled"]
+                else None
+            )
+
             try:
                 # Durdur'a basilinca Streamlit script'i bastan calistirir ve
                 # bu dongu kendiliginden kesilir.
@@ -228,13 +369,17 @@ with tab_webcam:
                     if not ok:
                         st.warning("Kameradan goruntu alinamadi.")
                         break
-                    annotated, detections = detector.detect(frame, conf, keep_classes)
+
+                    if live_session is not None:
+                        annotated, _ = live_session.step(frame)
+                        text = as_counts(live_session.unique_counts())
+                        text = f"Toplam farkli nesne — {text}" if text else "Nesne yok."
+                    else:
+                        annotated, detections = detector.detect(frame, conf, keep_classes)
+                        text = as_counts(summarize(detections)) or "Goruntude nesne yok."
+
                     frame_slot.image(to_rgb(annotated), channels="RGB", use_container_width=True)
-                    counts = summarize(detections)
-                    info_slot.write(
-                        ", ".join(f"{n}× {label}" for label, n in counts.items())
-                        or "Goruntude nesne yok."
-                    )
+                    info_slot.write(text)
             finally:
                 capture.release()
 

@@ -5,4 +5,5 @@
 ultralytics>=8.3        # YOLOv8 modeli (torch, torchvision, opencv'yi de getirir)
 streamlit>=1.40         # web arayuzu
 opencv-python>=4.10     # resim/video okuma-yazma
+lap>=0.5.12             # ByteTrack'in eslestirme adimi (yoksa takip calismaz)
 numpy>=1.26

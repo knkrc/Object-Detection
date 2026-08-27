@@ -1,12 +1,31 @@
-"""Video dosyalarini kare kare isleyip yeni bir video yazar."""
+"""Video dosyalarini kare kare isleyip yeni bir video yazar.
 
-from collections import Counter
+Islemin kendisi (tespit mi, takip mi) buraya ait degil: cagiran taraf bir
+`on_frame(kare) -> cizilmis_kare` fonksiyonu verir. Boylece ayni dongu hem
+tespit hem takip icin kullanilir.
+"""
+
 from pathlib import Path
 from typing import Callable
 
 import cv2
+import numpy as np
 
-from src.detector import Detector
+
+def video_info(source: Path) -> dict:
+    """Videoyu acmadan once fps/boyut gibi bilgileri okur (arayuz icin)."""
+    capture = cv2.VideoCapture(str(source))
+    if not capture.isOpened():
+        raise RuntimeError(f"Video acilamadi: {source}")
+    try:
+        return {
+            "fps": capture.get(cv2.CAP_PROP_FPS) or 25.0,
+            "width": int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            "height": int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            "frames": int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) or 0,
+        }
+    finally:
+        capture.release()
 
 
 def _writer(path: Path, fps: float, size: tuple[int, int]) -> cv2.VideoWriter:
@@ -20,18 +39,16 @@ def _writer(path: Path, fps: float, size: tuple[int, int]) -> cv2.VideoWriter:
 
 
 def process_video(
-    detector: Detector,
     source: Path,
     target: Path,
-    conf: float = 0.35,
-    keep_classes: list[str] | None = None,
+    on_frame: Callable[[np.ndarray], np.ndarray],
     stride: int = 1,
     on_progress: Callable[[float], None] | None = None,
 ) -> dict:
-    """Videoyu isler, kutulari cizilmis halini `target` yoluna yazar.
+    """Videoyu isler, `on_frame`'in dondurdugu kareleri `target`'a yazar.
 
-    `stride` > 1 ise her N karede bir tespit yapilir, aradaki karelerde
-    son bulunan kutular tekrar cizilir. Uzun videolari hizlandirir.
+    `stride` > 1 ise her N karede bir `on_frame` cagrilir, aradaki karelerde
+    son cizilmis kare tekrar yazilir. Uzun videolari belirgin sekilde hizlandirir.
     """
     capture = cv2.VideoCapture(str(source))
     if not capture.isOpened():
@@ -43,9 +60,8 @@ def process_video(
     total = int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
 
     writer = _writer(target, fps, (width, height))
-    counts: Counter[str] = Counter()
     frame_index = 0
-    last_frame = None
+    last_frame: np.ndarray | None = None
 
     try:
         while True:
@@ -54,13 +70,9 @@ def process_video(
                 break
 
             if frame_index % stride == 0:
-                annotated, detections = detector.detect(frame, conf, keep_classes)
-                counts.update(d.label for d in detections)
-                last_frame = annotated
-            else:
-                annotated = last_frame if last_frame is not None else frame
+                last_frame = on_frame(frame)
 
-            writer.write(annotated)
+            writer.write(last_frame if last_frame is not None else frame)
             frame_index += 1
 
             if on_progress and total:
@@ -69,9 +81,4 @@ def process_video(
         capture.release()
         writer.release()
 
-    return {
-        "frames": frame_index,
-        "fps": fps,
-        "size": (width, height),
-        "counts": dict(counts.most_common()),
-    }
+    return {"frames": frame_index, "fps": fps, "size": (width, height)}

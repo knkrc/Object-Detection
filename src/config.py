@@ -26,5 +26,11 @@ DEFAULT_CONF = 0.35
 # Video islerken her N kareden birini isle (1 = her kare)
 DEFAULT_FRAME_STRIDE = 1
 
+# --- Takip (tracking) ayarlari ---
+# Hareket izinde saklanan gecmis kare sayisi
+DEFAULT_TRAIL_LENGTH = 32
+# Cizgi gecis sayaci: cizginin karedeki varsayilan konumu (0-1 arasi oran)
+DEFAULT_LINE_POSITION = 0.5
+
 IMAGE_TYPES = ["jpg", "jpeg", "png", "bmp", "webp"]
 VIDEO_TYPES = ["mp4", "mov", "avi", "mkv"]
