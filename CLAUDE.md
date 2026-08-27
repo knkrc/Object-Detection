@@ -8,8 +8,10 @@ geliştirme günlüğüdür. **Her milestone sonunda güncellenir.**
 ## Proje özeti
 
 GitHub portfolyosu / CV için geliştirilen bir **nesne tespiti (object detection)**
-uygulaması. YOLOv8'in COCO ile eğitilmiş hazır modelini kullanarak resim, video
-ve canlı kamera üzerinde 80 sınıfı tespit eder. Arayüz Streamlit.
+ve **takip (tracking)** uygulaması. YOLOv8'in COCO ile eğitilmiş hazır modelini
+kullanarak resim, video ve canlı kamera üzerinde 80 sınıfı tespit eder; takip
+modunda her nesneye kalıcı ID verip benzersiz sayım ve çizgi geçişi hesaplar.
+Arayüz Streamlit.
 
 **Hedef:** Çalışan, gösterilebilir, anlaşılır bir proje. Aşırı mühendislik yok —
 kod okunduğunda ne yaptığı anlaşılmalı.
@@ -20,6 +22,7 @@ kod okunduğunda ne yaptığı anlaşılmalı.
 |---|---|
 | Python 3.13 (`.venv`) | Proje içi izole ortam, Anaconda base'i kirletmiyoruz |
 | ultralytics (YOLOv8) | Hazır COCO modeli, tek satırda inference |
+| ByteTrack (+ `lap`) | Takip için; hızlı, CPU'da rahat çalışır, ultralytics'e gömülü |
 | OpenCV | Resim/video okuma-yazma, kare işleme |
 | Streamlit | Hızlı, görsel arayüz — portfolyoda ekran görüntüsü almak kolay |
 
@@ -44,8 +47,18 @@ python scripts/download_samples.py   # örnek görselleri indir
   yeniden yüklenir ve uygulama kullanılamaz hale gelir.
 - **Ağırlıklar `models/` altında, git'e girmez.** İlk çalıştırmada otomatik iner
   (`Detector.__init__` indirilen dosyayı `models/`'e taşır).
-- **Video işleme `src/video.py`'de ayrı.** `app.py`'nin şişmemesi için.
+- **Video işleme `src/video.py`'de ayrı ve *işten bağımsız*.** `process_video`
+  ne yaptığını bilmez; kendisine verilen `on_frame(kare) -> kare` fonksiyonunu
+  çağırır. Böylece tespit ve takip aynı döngüyü paylaşır, kod ikiye bölünmez.
   "Kare atlama" (stride) ayarı hız/doğruluk dengesi kurar.
+- **Takip durumu `TrackSession` içinde.** ID'ler, izler ve sayaçlar oturuma ait;
+  her video/webcam açılışında yeni bir oturum kurulur. Model
+  `@st.cache_resource` ile paylaşıldığı için `TrackSession.__post_init__`
+  ultralytics'in tracker durumunu da sıfırlar — yoksa önceki videonun ID'leri
+  yenisine sızar.
+- **Çizgi geçişi vektörel çarpımın işaretiyle bulunur.** Nesne merkezinin
+  çizgiye göre tarafı iki kare arasında değiştiyse geçmiştir; işaretin yönü de
+  giriş/çıkış ayrımını verir. Kesişim hesabı yapmaya gerek yok.
 
 ## Kod kuralları
 
@@ -92,14 +105,52 @@ python scripts/download_samples.py   # örnek görselleri indir
 
 ---
 
+### ✅ M2 — Nesne takibi (2026-08-28)
+
+**Yapılanlar**
+- `src/tracker.py` — `TrackSession` (oturum durumu), `Track` (kimlikli nesne),
+  `LineCounter` (çizgi geçiş sayacı), `color_for` (ID'ye özel renk),
+  `line_from_ratio` (arayüz seçimi → piksel koordinatı).
+- ByteTrack (`bytetrack.yaml`) kullanılıyor. `lap>=0.5.12` bağımlılığı eklendi —
+  ultralytics eksikse kendi kurmaya çalışıyor ama yeniden başlatma istiyor,
+  o yüzden `requirements.txt`'e açıkça yazıldı.
+- `src/video.py` yeniden düzenlendi: `process_video` artık `on_frame` callback'i
+  alıyor, tespit/takip ayrımını bilmiyor. `video_info()` eklendi (fps/boyutu
+  işlemeden önce okumak için).
+- `Detector._class_ids` → `class_ids` (tracker da aynı dönüşüme ihtiyaç duyuyor).
+- `app.py` — Video ve Webcam sekmelerine "Takip modu" anahtarı, iz uzunluğu,
+  çizgi yönü/konumu kontrolleri; benzersiz sayım + çizgi sayacı + süre tablosu
+  ve CSV indirme.
+
+**Doğrulandı**
+- Sentetik videoda 60 kare boyunca 5 ID hiç değişmeden korundu (ID switch yok).
+- Çizgi yönü üç senaryoda test edildi: sağa giden → `saga: 4`, aşağı giden →
+  `asagi: 4`, sola giden → `sola: 4`. Yanlış yön hatası düzeltildi (aşağıya bak).
+- Tracker sıfırlama: aynı model nesnesiyle art arda iki oturum açıldığında
+  ikincisi de ID 1'den başlıyor — sızma yok.
+- Arayüz: takip kontrolleri doğru render ediliyor, çizgi ayarları
+  "Çizgi geçiş sayımı" işaretlenene kadar pasif.
+
+**Yol boyunca düzeltilen**
+- Dikey çizgide soldan sağa hareket "geri" olarak sayılıyordu. Sebep: çizgi
+  yukarıdan aşağı çiziliyordu, vektörel çarpımın pozitif tarafı sol kalıyordu.
+  Çizgi aşağıdan yukarı çizilecek şekilde değiştirildi. Ayrıca yön isimleri
+  `ileri/geri` yerine yöne göre `asagi/yukari` ve `saga/sola` yapıldı.
+
+**Bilinen eksikler / notlar**
+- Yüksek `stride` değeri ID kararlılığını bozabilir; arayüzde uyarı var ama
+  engellenmiyor.
+- Benzersiz sayım ByteTrack'in ID'lerine güveniyor. Nesne uzun süre kaybolup
+  geri gelirse yeni ID alır ve iki kez sayılır. BoT-SORT (re-ID) bunu iyileştirir
+  — istenirse kenar çubuğuna seçim eklenebilir.
+- Trail sözlüğü oturum boyunca büyür (her ID için `deque`). Saatlerce süren
+  webcam oturumunda bellek sorun olabilir; şimdilik önemsiz.
+
+---
+
 ## Sıradaki milestone'lar
 
-### 🔜 M2 — Nesne takibi (tracking)
-Videoda aynı nesneye kalıcı bir ID verip kare boyunca izlemek.
-`model.track(persist=True)` ile ByteTrack/BoTSORT. Çıktı: "bu videoda toplam
-7 farklı araba geçti" gibi gerçek bir sayım. Portfolyoda en çok fark yaratacak adım.
-
-### 📋 M3 — Kendi veri setiyle fine-tune
+### 🔜 M3 — Kendi veri setiyle fine-tune
 Küçük bir özel veri seti (2-3 sınıf) toplayıp/etiketleyip YOLOv8'i fine-tune etmek.
 `train.py` + `data.yaml` + eğitim metrikleri (mAP, confusion matrix) README'de.
 "Hazır model kullandı" ile "model eğitti" arasındaki farkı gösterir.
@@ -116,6 +167,7 @@ README'ye "Live Demo" rozeti — işe alım yapan kişi kodu indirmeden deneyebi
 ### 💡 Fikir havuzu (sıralı değil)
 - CLI arayüzü (`python detect.py --image foo.jpg`) — batch işler için.
 - Isı haritası / yoğunluk görselleştirmesi.
-- Tespit sonuçlarını JSON/CSV olarak dışa aktarma.
+- Tespit sonuçlarını JSON olarak dışa aktarma (takip CSV'si M2'de eklendi).
+- BoT-SORT seçeneği: uzun süre kaybolan nesneyi re-ID ile hatırlar.
 - İngilizce README (uluslararası başvurular için).
 - Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.

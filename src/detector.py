@@ -41,8 +41,11 @@ class Detector:
         """Modelin tanidigi tum sinif isimleri (COCO icin 80 tane)."""
         return list(self.model.names.values())
 
-    def _class_ids(self, keep: list[str] | None) -> list[int] | None:
-        """Sinif isimlerini ultralytics'in bekledigi id listesine cevirir."""
+    def class_ids(self, keep: list[str] | None) -> list[int] | None:
+        """Sinif isimlerini ultralytics'in bekledigi id listesine cevirir.
+
+        Tracker da ayni donusume ihtiyac duydugu icin bu metod disari acik.
+        """
         if not keep:
             return None
         return [i for i, name in self.model.names.items() if name in keep]
@@ -60,7 +63,7 @@ class Detector:
         results = self.model.predict(
             source=image,
             conf=conf,
-            classes=self._class_ids(keep_classes),
+            classes=self.class_ids(keep_classes),
             verbose=False,
         )
         result = results[0]
