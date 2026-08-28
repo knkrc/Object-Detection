@@ -93,15 +93,32 @@ def to_gif(source: Path, target: Path, width: int, fps: int) -> None:
     scale = f"fps={fps},scale={width}:-1:flags=lanczos"
 
     subprocess.run(
-        ["ffmpeg", "-y", "-i", str(source), "-vf", f"{scale},palettegen=stats_mode=diff",
-         str(palette)],
-        check=True, capture_output=True,
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source),
+            "-vf",
+            f"{scale},palettegen=stats_mode=diff",
+            str(palette),
+        ],
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
-        ["ffmpeg", "-y", "-i", str(source), "-i", str(palette),
-         "-lavfi", f"{scale}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3",
-         str(target)],
-        check=True, capture_output=True,
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source),
+            "-i",
+            str(palette),
+            "-lavfi",
+            f"{scale}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3",
+            str(target),
+        ],
+        check=True,
+        capture_output=True,
     )
     palette.unlink(missing_ok=True)
 
@@ -151,7 +168,7 @@ def main() -> None:
             print("Tur cekiliyor...")
             tour(page)
 
-            context.close()                 # video bu satirda yaziliyor
+            context.close()  # video bu satirda yaziliyor
             browser.close()
 
         recordings = list(workdir.glob("*.webm"))

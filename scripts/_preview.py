@@ -33,7 +33,11 @@ def start_app(port: int) -> tuple[subprocess.Popen, str]:
     url = f"http://localhost:{port}"
     process = subprocess.Popen(
         [
-            sys.executable, "-m", "streamlit", "run", "app.py",
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            "app.py",
             f"--server.port={port}",
             "--server.headless=true",
             "--browser.gatherUsageStats=false",
