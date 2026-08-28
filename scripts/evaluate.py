@@ -35,8 +35,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data", default="african-wildlife.yaml")
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--device", default=None)
-    parser.add_argument("--run", default=None,
-                        help="Grafiklerin kopyalanacagi egitim klasoru (varsayilan: runs/<veri seti adi>)")
+    parser.add_argument(
+        "--run",
+        default=None,
+        help="Grafiklerin kopyalanacagi egitim klasoru (varsayilan: runs/<veri seti adi>)",
+    )
     return parser.parse_args()
 
 
@@ -123,7 +126,11 @@ def main() -> None:
 
     DOCS_DIR.mkdir(exist_ok=True)
     (DOCS_DIR / "metrics.json").write_text(
-        json.dumps({"model": model_path.name, "data": args.data, **results}, indent=2, ensure_ascii=False)
+        json.dumps(
+            {"model": model_path.name, "data": args.data, **results},
+            indent=2,
+            ensure_ascii=False,
+        )
     )
     (DOCS_DIR / "metrics.md").write_text(as_markdown(model_path.name, args.data, results))
 

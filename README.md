@@ -1,5 +1,9 @@
 # 🎯 Object Detection
 
+[![CI](https://github.com/knkrc/Object-Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/knkrc/Object-Detection/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
 COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
 Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı araba geçti" sorusunu cevaplar.
@@ -129,12 +133,14 @@ Object-Detection/
 │   └── compare.py              # önce/sonra görselleri
 ├── notebooks/
 │   └── train_colab.ipynb       # GPU'da eğitim
+├── tests/                      # pytest paketi (hızlı + slow ayrımı)
 ├── docs/                       # metrikler, grafikler, karşılaştırmalar
 ├── samples/                    # örnek görseller
 ├── models/                     # ağırlıklar (kendi modelimiz hariç git'e girmez)
 ├── datasets/, runs/            # veri seti ve eğitim çıktıları (git'e girmez)
 ├── outputs/                    # işlenmiş videolar (git'e girmez)
-├── requirements.txt
+├── requirements.txt            # + requirements-dev.txt (pytest, ruff)
+├── pyproject.toml              # pytest ve ruff yapılandırması
 └── CLAUDE.md                   # geliştirme günlüğü / yol haritası
 ```
 
@@ -153,12 +159,35 @@ Object-Detection/
    Çizgi geçişi, nesne merkezinin çizgiye göre hangi tarafta olduğunun
    (vektörel çarpımın işareti) kareler arasında değişmesiyle tespit edilir.
 
+---
+
+## Testler
+
+```bash
+pip install -r requirements-dev.txt
+
+pytest                    # hepsi (55 test)
+pytest -m "not slow"      # sadece hızlı olanlar — model gerektirmez, ~1 sn
+pytest -m slow            # gerçek modeli indirip çalıştıranlar
+```
+
+Testler iki gruba ayrılıyor. Hızlı olanlar sahte bir model katmanı kullanıyor
+(`tests/conftest.py`), böylece takip mantığı — sayım, süre, iz, çizgi geçişi —
+torch'a hiç dokunmadan milisaniyeler içinde test edilebiliyor. `slow` işaretli
+olanlar gerçek ağırlıkları indirip çalıştırıyor ve CI'da atlanıyor.
+
+`src/` kapsamı hızlı testlerle **%91** (`tracker` %98, `video` %95). `detector`
+düşük görünüyor çünkü model gerektiren kısımları yalnızca `slow` testler kapsıyor.
+
+**CI** her push ve PR'da çalışıyor: ruff (lint + format) ve Python 3.11 / 3.12 / 3.13
+üzerinde hızlı test paketi. Bkz. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
 ## Yol haritası
 
 - [x] **M1** — Resim, video, webcam ve örneklerle çalışan temel uygulama
 - [x] **M2** — Nesne takibi: ByteTrack, benzersiz sayım, çizgi geçişi, hareket izi
 - [x] **M3** — Kendi veri setiyle fine-tune: African Wildlife, mAP50 0.957
-- [ ] **M4** — Testler + GitHub Actions
+- [x] **M4** — Testler (55 test, %91 kapsam) + GitHub Actions CI
 - [ ] **M5** — Docker + canlı demo (Streamlit Cloud / Hugging Face Spaces)
 
 Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).

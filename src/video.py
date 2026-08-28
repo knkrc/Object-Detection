@@ -5,8 +5,8 @@ Islemin kendisi (tespit mi, takip mi) buraya ait degil: cagiran taraf bir
 tespit hem takip icin kullanilir.
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import cv2
 import numpy as np

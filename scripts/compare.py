@@ -29,8 +29,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--custom", default="models/african-wildlife.pt")
     parser.add_argument("--baseline", default="yolov8n.pt", help="Karsilastirilacak hazir model")
-    parser.add_argument("--images", default=None,
-                        help="Gorsellerin bulundugu klasor (varsayilan: veri setinin val bolumu)")
+    parser.add_argument(
+        "--images",
+        default=None,
+        help="Gorsellerin bulundugu klasor (varsayilan: veri setinin val bolumu)",
+    )
     parser.add_argument("--dataset", default="african-wildlife")
     parser.add_argument("--count", type=int, default=6)
     parser.add_argument("--conf", type=float, default=0.35)
@@ -57,8 +60,7 @@ def find_folder(args) -> Path:
 
     if not folder.exists():
         raise SystemExit(
-            f"Gorsel klasoru bulunamadi: {folder}\n"
-            "--images ile klasoru elle verebilirsin."
+            f"Gorsel klasoru bulunamadi: {folder}\n--images ile klasoru elle verebilirsin."
         )
     return folder
 
@@ -171,7 +173,8 @@ def main() -> None:
         raise SystemExit(f"Ozel model bulunamadi: {custom_path}\nOnce scripts/train.py calistir.")
 
     baseline = Detector(args.baseline)
-    custom = Detector(custom_path.name if (custom_path.parent.name == "models") else str(custom_path))
+    is_in_models_dir = custom_path.parent.name == "models"
+    custom = Detector(custom_path.name if is_in_models_dir else str(custom_path))
 
     target = DOCS_DIR / "comparison"
     target.mkdir(parents=True, exist_ok=True)
@@ -202,9 +205,9 @@ def main() -> None:
 
     if panels:
         width = min(p.shape[1] for p in panels)
-        stacked = np.vstack([
-            cv2.resize(p, (width, int(p.shape[0] * width / p.shape[1]))) for p in panels
-        ])
+        stacked = np.vstack(
+            [cv2.resize(p, (width, int(p.shape[0] * width / p.shape[1]))) for p in panels]
+        )
         grid_path = target / "ozet.jpg"
         cv2.imwrite(str(grid_path), stacked)
         print(f"\n{len(panels)} karsilastirma yazildi: {target}")
