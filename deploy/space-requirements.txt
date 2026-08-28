@@ -1,0 +1,16 @@
+# Dependencies for the Hugging Face Space (Streamlit SDK).
+#
+# Differs from the project's requirements.txt in one way that matters: torch is
+# pinned to the +cpu build. On Linux the PyPI wheel drags in CUDA packages
+# (~2.5 GB), which a free Space cannot afford. The Dockerfile solves the same
+# problem with an index flag; here it has to live in the requirements file.
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.13.0+cpu
+torchvision==0.28.0+cpu
+
+ultralytics>=8.3
+streamlit>=1.40
+opencv-python>=4.10
+lap>=0.5.12
+numpy>=1.26

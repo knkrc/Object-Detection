@@ -6,9 +6,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
-[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc/object-detection)
+[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc26/object-detection)
 
-> 🚀 **[Canlı demoyu dene](https://huggingface.co/spaces/knkrc/object-detection)** — Hugging Face Spaces üzerinde çalışıyor.
+> 🚀 **[Canlı demoyu dene](https://huggingface.co/spaces/knkrc26/object-detection)** — Hugging Face Spaces üzerinde çalışıyor.
 
 YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
 COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
@@ -231,8 +231,9 @@ bir pratik hem de Hugging Face Spaces'in gereği.
 
 Hugging Face Spaces'e göndermek için:
 
-1. [huggingface.co](https://huggingface.co)'da hesap aç ve **Docker** SDK'sıyla
-   bir Space oluştur
+1. [huggingface.co](https://huggingface.co)'da hesap aç ve bir Space oluştur.
+   Formda hangi SDK'yı seçtiğin önemli değil — `deploy/space-README.md` onu
+   `streamlit` yapıyor. (HF, Docker Space'i sadece ücretli planda veriyor.)
 2. [Write yetkili bir token](https://huggingface.co/settings/tokens) üret
 3. Gönder:
 
@@ -244,6 +245,14 @@ export HF_TOKEN=hf_...
 Script Space'i klonluyor, uygulamanın çalışması için gereken dosyaları kopyalıyor
 (eğitim scriptleri, testler ve veri setleri gitmiyor), Space'in kendi README'sini
 [`deploy/space-README.md`](deploy/space-README.md)'den alıp push ediyor.
+
+Space **Streamlit SDK** ile çalışıyor, yani Dockerfile gönderilmiyor — HF
+[`deploy/space-requirements.txt`](deploy/space-requirements.txt) ve
+[`deploy/space-packages.txt`](deploy/space-packages.txt) dosyalarını kurup
+`app.py`'yi kendisi çalıştırıyor. O requirements dosyası torch'un `+cpu`
+sürümünü sabitliyor: Linux'ta PyPI tekerleği ücretsiz bir Space'in kaldıramayacağı
+CUDA paketlerini de çekiyor. Dockerfile yerel çalıştırma ve self-hosting için
+hâlâ geçerli.
 
 ### Sunucuda webcam neden yok?
 

@@ -121,6 +121,14 @@ docker compose up --build            # run in a container
   `docs/comparison` and `docs/plots`, nothing else under `docs/`). The
   Space's README is a separate file (`deploy/space-README.md`) because HF reads
   its configuration from README frontmatter, which our own README cannot carry.
+- **The Space runs on the Streamlit SDK, not Docker.** HF only offers Docker
+  Spaces on a paid plan, so the Dockerfile is not pushed. HF installs
+  `deploy/space-requirements.txt` and `deploy/space-packages.txt` and runs
+  `app.py` itself. The requirements file pins `torch==...+cpu`, because the
+  PyPI wheel pulls CUDA packages on Linux and a free Space cannot afford them —
+  the same problem the Dockerfile solves with an index flag. `packages.txt`
+  carries the two apt packages opencv needs. The Dockerfile still stands for
+  local runs and self-hosting, and CI still builds and smoke-tests it.
 - **Line crossings come from the sign of the cross product.** If the side of the
   line an object's centre is on flips between two frames, it has crossed; the
   direction of the flip separates in from out. No intersection maths needed.
@@ -448,18 +456,22 @@ tests") — this is a log, and later entries record how those figures changed.
 ## Upcoming
 
 ### 🔜 Next step — get the demo actually running
-The Space exists at `knkrc/object-detection` and the README links to it, but as
-of writing it is **not publicly reachable** (HF answers 401 for both private and
-non-existent Spaces, so the two cannot be told apart from outside). Two things
-to check:
+The README links to `knkrc26/object-detection`, but the Space is not up yet.
+What is left:
 
-1. **Visibility** — Space Settings, "Change visibility" to public. A private
-   Space gives every visitor a 401, which is worse than no link at all.
-2. **Content** — nothing has been pushed yet. Set `HF_TOKEN` and run
-   `./deploy/push_to_hf.sh knkrc/object-detection`; the first build takes a few
+1. **Create the Space** as public. Any SDK on the form will do — the push
+   overwrites README.md with `sdk: streamlit`. Docker is paid, hence the switch.
+2. **Push** — set `HF_TOKEN` and run
+   `./deploy/push_to_hf.sh knkrc26/object-detection`. The first build takes a few
    minutes.
+3. **Watch the build.** The `sdk: streamlit` route is the untested part: HF
+   dropped Streamlit from the Space creation form, but the backend still serves
+   Spaces declaring it, so setting it in frontmatter should work. If the build
+   refuses the SDK, the fallbacks are Streamlit Community Cloud (free, native
+   Streamlit) or writing a Gradio front end against the existing `src/` modules.
 
-Once it is up, open the link and confirm the app loads.
+**Note on the username:** HF is `knkrc26`, GitHub is `knkrc`. The README linked
+the GitHub name for a while and every visitor got a 401.
 
 ### 💡 Idea pool (unordered)
 - A CLI (`python detect.py --image foo.jpg`) for batch work.
