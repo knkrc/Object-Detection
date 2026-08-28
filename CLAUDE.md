@@ -1,451 +1,467 @@
 # CLAUDE.md
 
-Bu dosya, projede çalışan Claude (ve gelecekteki ben) için bağlam ve
-geliştirme günlüğüdür. **Her milestone sonunda güncellenir.**
+Context and development log for Claude working on this project (and for future
+me). **Updated at the end of every milestone.**
 
 ---
 
-## Proje özeti
+## Project summary
 
-GitHub portfolyosu / CV için geliştirilen bir **nesne tespiti (object detection)**
-ve **takip (tracking)** uygulaması. YOLOv8'in COCO ile eğitilmiş hazır modelini
-kullanarak resim, video ve canlı kamera üzerinde 80 sınıfı tespit eder; takip
-modunda her nesneye kalıcı ID verip benzersiz sayım ve çizgi geçişi hesaplar.
-Ayrıca African Wildlife veri setiyle fine-tune edilmiş kendi modelimiz de
-arayüzden seçilebiliyor. Arayüz Streamlit.
+An **object detection and tracking** app built for a GitHub portfolio / CV. It
+uses YOLOv8's COCO-pretrained model to detect 80 classes in images, video and a
+live camera; in tracking mode it gives each object a persistent ID and computes
+unique counts and line crossings. A model we fine-tuned ourselves on the African
+Wildlife dataset is also selectable from the UI. The interface is Streamlit.
 
-**Hedef:** Çalışan, gösterilebilir, anlaşılır bir proje. Aşırı mühendislik yok —
-kod okunduğunda ne yaptığı anlaşılmalı.
+**The goal:** a project that works, can be shown, and can be understood. No
+over-engineering — reading the code should tell you what it does.
 
-## Teknoloji
+## Technology
 
-| Ne | Neden |
+| What | Why |
 |---|---|
-| Python 3.13 (`.venv`) | Proje içi izole ortam, Anaconda base'i kirletmiyoruz |
-| ultralytics (YOLOv8) | Hazır COCO modeli, tek satırda inference |
-| ByteTrack (+ `lap`) | Takip için; hızlı, CPU'da rahat çalışır, ultralytics'e gömülü |
-| OpenCV | Resim/video okuma-yazma, kare işleme |
-| Streamlit | Hızlı, görsel arayüz — portfolyoda ekran görüntüsü almak kolay |
-| MPS (Apple Silicon) | Eğitim burada dönüyor; Colab notebook'u GPU alternatifi |
-| pytest + ruff | Test ve lint; ikisi de `pyproject.toml`'da yapılandırılıyor |
-| Docker | Dağıtım; aynı imaj hem yerelde hem Hugging Face Spaces'te çalışıyor |
+| Python 3.13 (`.venv`) | Isolated per-project environment; keeps the Anaconda base clean |
+| ultralytics (YOLOv8) | Pretrained COCO model, inference in one line |
+| ByteTrack (+ `lap`) | For tracking; fast, fine on CPU, built into ultralytics |
+| OpenCV | Reading/writing images and video, frame processing |
+| Streamlit | Quick, visual UI — easy to screenshot for a portfolio |
+| MPS (Apple Silicon) | Where training runs; the Colab notebook is the GPU alternative |
+| pytest + ruff | Tests and linting; both configured in `pyproject.toml` |
+| Docker | Deployment; the same image runs locally and on Hugging Face Spaces |
 
-## Komutlar
+## Commands
 
 ```bash
-source .venv/bin/activate        # ortamı aktif et
-streamlit run app.py             # uygulamayı çalıştır
-python scripts/download_samples.py   # örnek görselleri indir
+source .venv/bin/activate        # activate the environment
+streamlit run app.py             # run the app
+python scripts/download_samples.py   # fetch the sample images
 
-python scripts/train.py --epochs 30  # fine-tune (models/<isim>.pt üretir)
-python scripts/evaluate.py           # metrikler → docs/metrics.{json,md} + docs/plots/
-python scripts/compare.py            # önce/sonra görselleri → docs/comparison/
-python scripts/screenshot.py         # README ekran görüntüleri → docs/screenshots/
-python scripts/make_demo_gif.py      # README demo GIF'i → docs/demo.gif (ffmpeg gerekir)
+python scripts/train.py --epochs 30  # fine-tune (produces models/<name>.pt)
+python scripts/evaluate.py           # metrics -> docs/metrics.{json,md} + docs/plots/
+python scripts/compare.py            # before/after images -> docs/comparison/
+python scripts/screenshot.py         # README screenshots -> docs/screenshots/
+python scripts/make_demo_gif.py      # README demo GIF -> docs/demo.gif (needs ffmpeg)
 
-pytest                               # tüm testler
-pytest -m "not slow"                 # hızlı olanlar (CI'ın koştuğu)
-pytest -m slow                       # gerçek modeli çalıştıranlar
+pytest                               # all tests
+pytest -m "not slow"                 # the fast ones (what CI runs)
+pytest -m slow                       # the ones that run the real model
 ruff check . && ruff format .        # lint + format
 
-docker compose up --build            # konteynerde çalıştır
-./deploy/push_to_hf.sh <user>/<space>  # HF Spaces'e gönder (HF_TOKEN gerekir)
+docker compose up --build            # run in a container
+./deploy/push_to_hf.sh <user>/<space>  # push to HF Spaces (needs HF_TOKEN)
 ```
 
-## Mimari kararlar
+## Architecture decisions
 
-- **`src/detector.py` tek giriş noktası.** Arayüz katmanı (`app.py`) ultralytics'i
-  doğrudan tanımaz; sadece `Detector.detect()` çağırır ve
-  `(çizilmiş_görsel, [Detection, ...])` alır. Böylece ileride model değiştirmek
-  (YOLOv11, RT-DETR, kendi eğittiğimiz model) tek dosyayı ilgilendirir.
-- **Görüntüler BGR numpy dizisi olarak dolaşır.** OpenCV'nin varsayılanı bu;
-  RGB'ye çevirme sadece ekrana basarken (`to_rgb`) yapılır. Karışıklığı önlemek
-  için bu kurala sadık kalıyoruz.
-- **Model `@st.cache_resource` ile bir kez yüklenir.** Yoksa her etkileşimde
-  yeniden yüklenir ve uygulama kullanılamaz hale gelir.
-- **Ağırlıklar `models/` altında, git'e girmez.** İlk çalıştırmada otomatik iner.
-  `detector.resolve_weights()` / `stash_weights()` bu işi yapıyor ve hem
-  `Detector` hem `scripts/train.py` bunları kullanıyor — ultralytics indirmeyi
-  çalışma dizinine yaptığı için, ortak bir yerde tutulmazsa proje kökü kirleniyor.
-- **Video işleme `src/video.py`'de ayrı ve *işten bağımsız*.** `process_video`
-  ne yaptığını bilmez; kendisine verilen `on_frame(kare) -> kare` fonksiyonunu
-  çağırır. Böylece tespit ve takip aynı döngüyü paylaşır, kod ikiye bölünmez.
-  "Kare atlama" (stride) ayarı hız/doğruluk dengesi kurar.
-- **Takip durumu `TrackSession` içinde.** ID'ler, izler ve sayaçlar oturuma ait;
-  her video/webcam açılışında yeni bir oturum kurulur. Model
-  `@st.cache_resource` ile paylaşıldığı için `TrackSession.__post_init__`
-  ultralytics'in tracker durumunu da sıfırlar — yoksa önceki videonun ID'leri
-  yenisine sızar.
-- **Eğitilen modeller `models/` altında, arayüz onları kendi bulur.**
-  `config.custom_models()` hazır listede olmayan `.pt` dosyalarını tarar ve
-  "Özel: <isim>" olarak model listesine ekler. Yeni bir model eğitmek arayüzde
-  hiçbir kod değişikliği gerektirmiyor — dosyayı `models/`'a koymak yeterli.
-- **`models/african-wildlife.pt` bilerek git'e dahil (5.9 MB).** `.gitignore`'da
-  `*.pt` kuralına özel bir istisna var. Repoyu klonlayan biri 31 dakika eğitim
-  beklemeden "Özel:" modelini deneyebilsin diye.
-- **Demo GIF'i de script'le.** `scripts/make_demo_gif.py` playwright'ın video
-  kaydıyla arayüz turunu çekiyor, ffmpeg iki geçişli palet yöntemiyle GIF'e
-  çeviriyor (tek geçiş 256 renk sınırında berbat görünüyor). Ortak "uygulamayı
-  başlat / sekmede gez" mantığı `scripts/_preview.py`'ye alındı.
-- **Ekran görüntüleri script'le alınıyor, elle değil.** `scripts/screenshot.py`
-  playwright ile uygulamayı başlatıp gezerek `docs/screenshots/` altına yazıyor.
-  Arayüz değiştikçe tek komutla yenilenebilsin diye. JPEG kullanılıyor: içerik
-  ağırlıklı olarak fotoğraf, PNG gereksiz şişiyor (1.4 MB → 576 KB).
-- **Metrikler ve grafikler `docs/` altında commit'leniyor.** `runs/` git'e
-  girmiyor; `evaluate.py` gösterilmeye değer grafikleri `docs/plots/`'a
-  kopyalıyor. README ve Streamlit sekmesi aynı dosyaları okuyor.
-- **Testler `slow` işaretiyle ikiye ayrılıyor.** Hızlı olanlar `tests/conftest.py`
-  içindeki sahte model katmanını kullanıyor: `FakeModel.track()` ultralytics
-  çıktısının yalnızca `TrackSession`'ın dokunduğu kadarını taklit ediyor.
-  Bu sayede takip mantığı torch'a hiç dokunmadan test ediliyor ve CI dakikalar
-  yerine saniyeler sürüyor. Gerçek modelle çalışanlar `slow` işaretli.
-- **`pythonpath = ["."]` pytest yapılandırmasında şart.** CI `pytest` komutunu
-  doğrudan çağırıyor; `python -m pytest`ten farklı olarak çalışma dizinini
-  `sys.path`'e eklemiyor ve `import src` patlıyor.
-- **Arayüz metni değişirse görselleri yenile.** `docs/screenshots/`, `docs/demo.gif`
-  ve `docs/comparison/` uygulamanın ekranını ve çıktılarını gösteriyor; metin
-  değişince eskiyorlar. Üç komut: `scripts/screenshot.py`, `scripts/make_demo_gif.py`,
-  `scripts/compare.py`. Metrik anahtarları değişirse `scripts/evaluate.py` de.
-- **`is_deployed()` webcam sekmesini sunucuda gizliyor.** `cv2.VideoCapture(0)`
-  uygulamanın *çalıştığı makinenin* kamerasını açıyor; sunucuda bu ziyaretçinin
-  değil sunucunun kamerası olurdu. Sekme oluşturulmuyor bile — blok bir
-  `if show_webcam:` altında, yoksa widget'lar ana sayfaya sızardı.
-- **Docker imajı kendi kendine yeter.** Model ağırlıkları, örnekler ve metrikler
-  imaja kopyalanıyor; konteyner ilk açılışta hiçbir şey indirmiyor. torch CPU
-  deposundan kuruluyor (PyPI sürümü Linux'ta CUDA paketlerini de çekiyor).
-- **Space, reponun kopyası değil.** `deploy/push_to_hf.sh` yalnızca uygulamanın
-  çalışması için gerekenleri gönderiyor; eğitim scriptleri, testler ve veri
-  setleri Space'e gitmiyor. Space'in README'si ayrı bir dosya
-  (`deploy/space-README.md`) çünkü HF yapılandırmayı README frontmatter'ından
-  okuyor ve bizim README'miz onu taşıyamaz.
-- **Çizgi geçişi vektörel çarpımın işaretiyle bulunur.** Nesne merkezinin
-  çizgiye göre tarafı iki kare arasında değiştiyse geçmiştir; işaretin yönü de
-  giriş/çıkış ayrımını verir. Kesişim hesabı yapmaya gerek yok.
+- **`src/detector.py` is the single entry point.** The UI layer (`app.py`) never
+  touches ultralytics directly; it calls `Detector.detect()` and gets back
+  `(annotated_image, [Detection, ...])`. Swapping the model later (YOLOv11,
+  RT-DETR, one we trained) then only concerns one file.
+- **Images travel as BGR numpy arrays.** That is OpenCV's default; conversion to
+  RGB happens only on the way to the screen (`to_rgb`). We stick to this rule to
+  avoid confusion.
+- **The model is loaded once via `@st.cache_resource`.** Otherwise it reloads on
+  every interaction and the app becomes unusable.
+- **Weights live under `models/` and are gitignored.** They download on first
+  run. `detector.resolve_weights()` / `stash_weights()` handle this, and both
+  `Detector` and `scripts/train.py` use them — ultralytics downloads into the
+  working directory, so without a shared place the project root gets littered.
+- **Video processing sits in `src/video.py` and is *work-agnostic*.**
+  `process_video` does not know what it is doing; it calls the
+  `on_frame(frame) -> frame` function it was given. Detection and tracking share
+  one loop instead of the code splitting in two. The "frame skip" (stride)
+  setting trades accuracy for speed.
+- **Tracking state lives in `TrackSession`.** IDs, trails and counters belong to
+  a session; a new one is created for every video or webcam run. Because the
+  model is shared through `@st.cache_resource`, `TrackSession.__post_init__`
+  also resets ultralytics' tracker state — otherwise the previous video's IDs
+  leak into the next one.
+- **Trained models go under `models/`, and the UI finds them itself.**
+  `config.custom_models()` scans for `.pt` files that are not built-in and adds
+  them to the model list as "Custom: <name>". Training a new model needs no code
+  change — dropping the file into `models/` is enough.
+- **`models/african-wildlife.pt` is committed on purpose (5.9 MB).** There is a
+  deliberate exception to the `*.pt` rule in `.gitignore`, so whoever clones the
+  repo can try the "Custom:" model without waiting 31 minutes for training.
+- **The demo GIF is scripted too.** `scripts/make_demo_gif.py` records the UI
+  tour with playwright's video capture, and ffmpeg converts it with a two-pass
+  palette (a single pass looks awful within GIF's 256-colour limit). The shared
+  "start the app / walk the tabs" logic moved to `scripts/_preview.py`.
+- **Screenshots are taken by a script, not by hand.** `scripts/screenshot.py`
+  starts the app with playwright, walks it, and writes into `docs/screenshots/`,
+  so they can be refreshed with one command whenever the UI changes. JPEG is
+  used: the content is mostly photo and PNG bloats it (1.4 MB -> 576 KB).
+- **Metrics and plots are committed under `docs/`.** `runs/` is gitignored;
+  `evaluate.py` copies the plots worth showing into `docs/plots/`. The README
+  and the Streamlit tab read the same files.
+- **Tests split in two via the `slow` marker.** The fast ones use the fake model
+  layer in `tests/conftest.py`: `FakeModel.track()` imitates only as much of
+  ultralytics' output as `TrackSession` touches. That way the tracking logic is
+  tested without touching torch, and CI takes seconds instead of minutes. The
+  ones that use the real model are marked `slow`.
+- **`pythonpath = ["."]` is required in the pytest config.** CI invokes `pytest`
+  directly, which — unlike `python -m pytest` — does not add the working
+  directory to `sys.path`, and `import src` fails.
+- **When UI text changes, refresh the images.** `docs/screenshots/`,
+  `docs/demo.gif` and `docs/comparison/` show the app's screen and output, so
+  they go stale when the wording changes. Three commands:
+  `scripts/screenshot.py`, `scripts/make_demo_gif.py`, `scripts/compare.py`.
+  If metric keys change, `scripts/evaluate.py` too.
+- **`is_deployed()` hides the webcam tab on a server.** `cv2.VideoCapture(0)`
+  opens the camera of *whichever machine is running the app*; on a server that
+  would be the server's camera, not the visitor's. The tab is not even created —
+  the block sits under `if show_webcam:`, otherwise its widgets would leak onto
+  the main page.
+- **The Docker image is self-contained.** Model weights, samples and metrics are
+  copied in; the container downloads nothing on first start. torch is installed
+  from the CPU index (the PyPI build pulls CUDA packages on Linux).
+- **The Space is not a copy of the repo.** `deploy/push_to_hf.sh` pushes only
+  what the app needs to run; training scripts, tests and datasets stay out. The
+  Space's README is a separate file (`deploy/space-README.md`) because HF reads
+  its configuration from README frontmatter, which our own README cannot carry.
+- **Line crossings come from the sign of the cross product.** If the side of the
+  line an object's centre is on flips between two frames, it has crossed; the
+  direction of the flip separates in from out. No intersection maths needed.
 
-## Kod kuralları
+## Code conventions
 
-- **Kod tabanının tamamı İngilizce.** Yorumlar, docstring'ler, test isimleri,
-  değişken isimleri, arayüz metinleri, `metrics.json` anahtarları, Dockerfile
-  ve CI yorumları — hepsi. Yeni kod yazarken Türkçe yorum ekleme.
-- **Bu dosya (CLAUDE.md) ve README.tr.md Türkçe kalıyor.** Biri geliştirme
-  günlüğü, diğeri Türkçe okuyanlar için; ikisi de kod değil.
-- Docstring'ler *ne yaptığını* değil *neden öyle yaptığını* anlatsın.
-- **İki README var:** `README.md` İngilizce (birincil, uluslararası başvurular
-  için), `README.tr.md` Türkçe. İkisi de karşılıklı link veriyor. Bir şey
-  değişince **ikisini birden** güncelle — özellikle test sayısı, kapsam yüzdesi
-  ve metrikler gibi sayılar.
-- Yeni bir özellik `src/` altında kendi modülüne; `app.py` sadece arayüz olsun.
-- Bağımlılık eklerken hem `requirements.txt` (gevşek) hem
-  `requirements-lock.txt` (`pip freeze`) güncellenir.
+- **The whole codebase is in English.** Comments, docstrings, test names,
+  variable names, UI strings, `metrics.json` keys, Dockerfile and CI comments —
+  all of it. This file was translated too, so nothing is left in Turkish except
+  `README.tr.md`.
+- Docstrings should say *why* something is done that way, not *what* it does.
+- **There are two READMEs:** `README.md` in English (primary, for international
+  applications) and `README.tr.md` in Turkish. They link to each other. When
+  something changes, update **both** — especially numbers like the test count,
+  the coverage percentage and the metrics.
+- A new feature gets its own module under `src/`; `app.py` stays UI only.
+- When adding a dependency, update both `requirements.txt` (loose) and
+  `requirements-lock.txt` (`pip freeze`).
 
 ---
 
-## Milestone günlüğü
+## Milestone log
 
-### ✅ M1 — Temel uygulama (2026-08-27)
+### ✅ M1 — Base application (2026-08-27)
 
-**Yapılanlar**
-- `.venv` kuruldu; ultralytics 8.4.131, torch 2.13.0, opencv 5.0.0, streamlit 1.62.0.
-- `src/config.py` — yollar, model listesi (n/s/m), varsayılan ayarlar.
-- `src/detector.py` — `Detector` sınıfı + `Detection` dataclass + `summarize()`.
-- `src/video.py` — video dosyasını kare kare işleyip mp4 yazma, ilerleme callback'i.
-- `app.py` — 4 sekme (Resim / Video / Webcam / Örnekler) + kenar çubuğunda
-  model seçimi, güven eşiği, sınıf filtresi.
-- `scripts/download_samples.py` — Ultralytics'in açık demo görsellerini indirir.
+**Done**
+- `.venv` set up; ultralytics 8.4.131, torch 2.13.0, opencv 5.0.0, streamlit 1.62.0.
+- `src/config.py` — paths, model list (n/s/m), defaults.
+- `src/detector.py` — the `Detector` class, the `Detection` dataclass, `summarize()`.
+- `src/video.py` — frame-by-frame processing into an mp4, progress callback.
+- `app.py` — 4 tabs (Image / Video / Webcam / Samples) plus model selection,
+  confidence threshold and class filter in the sidebar.
+- `scripts/download_samples.py` — downloads Ultralytics' public demo images.
 - README, .gitignore, requirements.
-- `LICENSE` (MIT) — README'de belirtilen lisansın karşılığı. **Copyright satırındaki
-  ismi tam adınla değiştir.**
-- `git init` yapıldı, dosyalar stage'lendi (commit atılmadı).
+- `LICENSE` (MIT) to match what the README claims. **Replace the name in the
+  copyright line with your full name.**
+- `git init` run, files staged (no commit made).
 
-**Doğrulandı**
-- `samples/bus.jpg`: 4 tespit (3× person, 1× bus). Sınıf filtresi (`keep_classes`)
-  çalışıyor, ağırlık `models/` altına iniyor.
-- Streamlit arayüzü ayağa kalkıyor, "Örnekler" sekmesi orijinal/sonuç
-  karşılaştırmasını doğru gösteriyor.
-- Video hattı: 40 karelik test videosu, stride=2 ile 40 kare yazıldı,
-  ilerleme callback'i 1.0'a ulaşıyor, çıktı mp4 tekrar okunabiliyor.
+**Verified**
+- `samples/bus.jpg`: 4 detections (3× person, 1× bus). The class filter
+  (`keep_classes`) works; weights land under `models/`.
+- The Streamlit UI comes up and the "Samples" tab shows the original/result
+  comparison correctly.
+- Video pipeline: a 40-frame test video with stride=2 wrote 40 frames, the
+  progress callback reaches 1.0, and the output mp4 can be read back.
 
-**Bilinen eksikler / notlar**
-- Webcam döngüsü Streamlit'in rerun mekanizmasına dayanıyor; "Durdur" butonu
-  script'i yeniden çalıştırarak döngüyü kesiyor. Basit ama kırılgan — sorun
-  çıkarsa `streamlit-webrtc`'ye geçilebilir.
-- Video çıktısı `avc1` codec'i ile yazılmaya çalışılıyor, olmazsa `mp4v`.
-  `mp4v` bazı tarayıcılarda oynamayabilir — indirme butonu her hâlükârda var.
-- Henüz test yok.
-
----
-
-### ✅ M2 — Nesne takibi (2026-08-28)
-
-**Yapılanlar**
-- `src/tracker.py` — `TrackSession` (oturum durumu), `Track` (kimlikli nesne),
-  `LineCounter` (çizgi geçiş sayacı), `color_for` (ID'ye özel renk),
-  `line_from_ratio` (arayüz seçimi → piksel koordinatı).
-- ByteTrack (`bytetrack.yaml`) kullanılıyor. `lap>=0.5.12` bağımlılığı eklendi —
-  ultralytics eksikse kendi kurmaya çalışıyor ama yeniden başlatma istiyor,
-  o yüzden `requirements.txt`'e açıkça yazıldı.
-- `src/video.py` yeniden düzenlendi: `process_video` artık `on_frame` callback'i
-  alıyor, tespit/takip ayrımını bilmiyor. `video_info()` eklendi (fps/boyutu
-  işlemeden önce okumak için).
-- `Detector._class_ids` → `class_ids` (tracker da aynı dönüşüme ihtiyaç duyuyor).
-- `app.py` — Video ve Webcam sekmelerine "Takip modu" anahtarı, iz uzunluğu,
-  çizgi yönü/konumu kontrolleri; benzersiz sayım + çizgi sayacı + süre tablosu
-  ve CSV indirme.
-
-**Doğrulandı**
-- Sentetik videoda 60 kare boyunca 5 ID hiç değişmeden korundu (ID switch yok).
-- Çizgi yönü üç senaryoda test edildi: sağa giden → `saga: 4`, aşağı giden →
-  `asagi: 4`, sola giden → `sola: 4`. Yanlış yön hatası düzeltildi (aşağıya bak).
-- Tracker sıfırlama: aynı model nesnesiyle art arda iki oturum açıldığında
-  ikincisi de ID 1'den başlıyor — sızma yok.
-- Arayüz: takip kontrolleri doğru render ediliyor, çizgi ayarları
-  "Çizgi geçiş sayımı" işaretlenene kadar pasif.
-
-**Yol boyunca düzeltilen**
-- Dikey çizgide soldan sağa hareket "geri" olarak sayılıyordu. Sebep: çizgi
-  yukarıdan aşağı çiziliyordu, vektörel çarpımın pozitif tarafı sol kalıyordu.
-  Çizgi aşağıdan yukarı çizilecek şekilde değiştirildi. Ayrıca yön isimleri
-  `ileri/geri` yerine yöne göre `asagi/yukari` ve `saga/sola` yapıldı.
-
-**Bilinen eksikler / notlar**
-- Yüksek `stride` değeri ID kararlılığını bozabilir; arayüzde uyarı var ama
-  engellenmiyor.
-- Benzersiz sayım ByteTrack'in ID'lerine güveniyor. Nesne uzun süre kaybolup
-  geri gelirse yeni ID alır ve iki kez sayılır. BoT-SORT (re-ID) bunu iyileştirir
-  — istenirse kenar çubuğuna seçim eklenebilir.
-- Trail sözlüğü oturum boyunca büyür (her ID için `deque`). Saatlerce süren
-  webcam oturumunda bellek sorun olabilir; şimdilik önemsiz.
+**Known gaps / notes**
+- The webcam loop leans on Streamlit's rerun mechanism; the "Stop" button breaks
+  the loop by rerunning the script. Simple but fragile — if it causes trouble,
+  `streamlit-webrtc` is the alternative.
+- Video output is attempted with the `avc1` codec, falling back to `mp4v`.
+  `mp4v` may not play in some browsers — the download button is there regardless.
+- No tests yet.
 
 ---
 
-### ✅ M3 — Kendi veri setiyle fine-tune (2026-08-28)
+### ✅ M2 — Object tracking (2026-08-28)
 
-**Veri seti:** `african-wildlife` (ultralytics'in hazır seti, 100 MB, 4 sınıf:
-buffalo, elephant, rhino, zebra). Seçim sebebi: elephant ve zebra COCO'da var,
-buffalo ve rhino yok — "önce/sonra" farkı hem gerçek hem de dürüst görünüyor.
-API anahtarı gerektirmiyor, `data=african-wildlife.yaml` deyince kendi iniyor.
+**Done**
+- `src/tracker.py` — `TrackSession` (session state), `Track` (an identified
+  object), `LineCounter` (line crossing counter), `color_for` (per-ID colour),
+  `line_from_ratio` (UI choice -> pixel coordinates).
+- ByteTrack (`bytetrack.yaml`) is used. Added the `lap>=0.5.12` dependency —
+  ultralytics tries to install it itself when missing but then asks for a
+  restart, so it is written into `requirements.txt` explicitly.
+- `src/video.py` restructured: `process_video` now takes an `on_frame` callback
+  and knows nothing about detection vs. tracking. Added `video_info()` (to read
+  fps/size before processing).
+- `Detector._class_ids` -> `class_ids` (the tracker needs the same conversion).
+- `app.py` — a "Tracking mode" toggle on the Video and Webcam tabs, plus trail
+  length and line direction/position controls; unique counts, the line counter,
+  the duration table and CSV download.
 
-**Yapılanlar**
-- `scripts/train.py` — fine-tune CLI'ı. Cihazı otomatik seçiyor (cuda → mps → cpu),
-  `patience` ile erken durdurma, bitince en iyi ağırlığı `models/<isim>.pt`'ye
-  kopyalıyor.
-- `scripts/evaluate.py` — doğrulama metriklerini `docs/metrics.json` ve
-  `docs/metrics.md`'ye yazıyor, eğitim grafiklerini `docs/plots/`'a kopyalıyor.
-- `scripts/compare.py` — hazır COCO modeli ile kendi modelimizi aynı görsellerde
-  yan yana koyuyor.
-- `notebooks/train_colab.ipynb` — aynı eğitimin Colab GPU sürümü.
-- `config.custom_models()` + `app.py` kenar çubuğu — eğitilen model tüm
-  sekmelerde (resim/video/webcam/takip) kullanılabiliyor.
-- `app.py` "📊 Model performansı" sekmesi — metrik kartları, sınıf tablosu,
-  önce/sonra seçici, eğitim grafikleri.
+**Verified**
+- On a synthetic video, 5 IDs held across 60 frames without changing (no ID
+  switches).
+- Line direction tested in three scenarios: moving right -> `saga: 4`, moving
+  down -> `asagi: 4`, moving left -> `sola: 4`. (These names were later
+  translated to `right`/`down`/`left`.) A wrong-direction bug was fixed, below.
+- Tracker reset: opening two sessions back to back on the same model object,
+  the second still starts at ID 1 — no leakage.
+- UI: the tracking controls render correctly, and the line settings stay
+  disabled until "Count line crossings" is ticked.
 
-**Sonuçlar** (YOLOv8n, 30 epoch, 640px, MPS, 31 dakika)
+**Fixed along the way**
+- On a vertical line, left-to-right movement was counted as "backward". Cause:
+  the line was drawn top to bottom, leaving the cross product's positive side on
+  the left. Changed to draw the line bottom to top. The direction names also
+  became direction-aware (`asagi/yukari`, `saga/sola`) instead of
+  `ileri/geri`.
 
-| Metrik | Değer |
+**Known gaps / notes**
+- A high `stride` can destabilise IDs; the UI warns but does not prevent it.
+- Unique counting trusts ByteTrack's IDs. An object that disappears for a while
+  and comes back gets a new ID and is counted twice. BoT-SORT (re-ID) improves
+  this — a sidebar option could be added if wanted.
+- The trail dictionary grows over a session (a `deque` per ID). Memory could
+  matter in a webcam session running for hours; negligible for now.
+
+---
+
+### ✅ M3 — Fine-tuning on our own dataset (2026-08-28)
+
+**Dataset:** `african-wildlife` (a built-in ultralytics set, 100 MB, 4 classes:
+buffalo, elephant, rhino, zebra). Chosen because elephant and zebra exist in
+COCO while buffalo and rhino do not — which makes the "before/after" difference
+both real and honest. No API key needed; `data=african-wildlife.yaml` downloads
+it automatically.
+
+**Done**
+- `scripts/train.py` — the fine-tuning CLI. Picks the device automatically
+  (cuda -> mps -> cpu), stops early via `patience`, and copies the best weights
+  to `models/<name>.pt` when done.
+- `scripts/evaluate.py` — writes validation metrics to `docs/metrics.json` and
+  `docs/metrics.md`, and copies training plots into `docs/plots/`.
+- `scripts/compare.py` — puts the pretrained COCO model and ours side by side on
+  the same images.
+- `notebooks/train_colab.ipynb` — the same training on a Colab GPU.
+- `config.custom_models()` plus the `app.py` sidebar — the trained model is
+  usable in every tab (image/video/webcam/tracking).
+- The `app.py` "📊 Model performance" tab — metric cards, per-class table,
+  before/after picker, training plots.
+
+**Results** (YOLOv8n, 30 epochs, 640px, MPS, 31 minutes)
+
+| Metric | Value |
 |---|---|
 | mAP50 | 0.957 |
 | mAP50-95 | 0.791 |
 | Precision | 0.954 |
 | Recall | 0.895 |
 
-Sınıf bazında mAP50: buffalo 0.970, elephant 0.927, rhino 0.972, zebra 0.958.
+Per-class mAP50: buffalo 0.970, elephant 0.927, rhino 0.972, zebra 0.958.
 
-**Önce/sonra kanıtı:** COCO modeli gergedanı `cow 0.56` + hayalet bir `horse`
-olarak görüyor, kendi modelimiz `rhino 0.97` diyor. Bufalo için de COCO `cow`
-diyor. Elephant ve zebra'da ikisi de doğru — beklenen, çünkü bunlar COCO'da var.
+**Before/after evidence:** the COCO model sees a rhino as `cow 0.56` plus a
+phantom `horse`; ours says `rhino 0.97`. For buffalo, COCO also says `cow`. On
+elephant and zebra both are right — expected, since those are COCO classes.
 
-**Yol boyunca düzeltilen**
-- `compare.py` veri setinin `valid/images` düzeninde olduğunu varsayıyordu, oysa
-  bu set `images/val` kullanıyor. Yaygın dört düzeni de deneyen bir arama eklendi.
-- Rastgele görsel seçimi veri setinde çok olan sınıfa (fil) yığılıyordu ve
-  karşılaştırma anlamsız görünüyordu. Etiket dosyalarından sınıf okunup her
-  sınıftan eşit örnek alınacak şekilde değiştirildi.
-- Karşılaştırma başlıkları sadece tespit *sayısını* yazıyordu; asıl fark
-  etiketlerde olduğu için başlıklara etiket listesi konuldu.
-- Veri setindeki dosya adlarında boşluk ve parantez var (`3 (226).jpg`) — çıktılar
-  içeriğe göre yeniden adlandırılıyor (`rhino.jpg`, `buffalo-2.jpg`).
+**Fixed along the way**
+- `compare.py` assumed the dataset used a `valid/images` layout, but this one
+  uses `images/val`. Added a search that tries all four common layouts.
+- Random image selection piled up on the dominant class (elephant), which made
+  the comparison meaningless. Changed to read the class from the label files and
+  take an even sample from each class.
+- The comparison banners printed only the detection *count*; since the real
+  difference is in the labels, the label list went into the banners.
+- Filenames in the dataset contain spaces and parentheses (`3 (226).jpg`), so
+  outputs are renamed after their content (`rhino.jpg`, `buffalo-2.jpg`).
 
-**Bilinen eksikler / notlar**
-- 30 epoch keyfi bir sayı; `patience=15` erken durdurma tetiklenmedi, yani daha
-  uzun eğitim biraz daha iyileştirebilir.
-- Sadece YOLOv8n denendi. `--model yolov8s.pt` ile daha büyük model muhtemelen
-  mAP50-95'i yükseltir.
-- Colab notebook'u yazıldı ama Colab'da **çalıştırılmadı** — yerelde aynı
-  ultralytics çağrılarını kullanıyor, yine de ilk kullanımda gözden geçir.
-- `docs/` şu an tek bir modelin sonuçlarını tutuyor. İkinci bir model eğitilirse
-  dosyalar üzerine yazılır; gerekirse model adına göre klasörlenmeli.
-
----
-
-### ✅ M4 — Testler + CI (2026-08-28)
-
-**Yapılanlar**
-- `tests/conftest.py` — sahte model katmanı (`FakeModel`, `FakeResult`, `FakeBox`,
-  `FakeDetector`) ve sentetik video fixture'ı. Ultralytics çıktısının sadece
-  `TrackSession`'ın kullandığı kadarı taklit ediliyor.
-- `tests/test_tracker.py` (26 test) — çizgi sayacı yön mantığı, ilk görülmede
-  saymama, aynı tarafta kalınca saymama, gidip gelme, çizgi üstündeki nokta;
-  `TrackSession` benzersiz sayım, süre, iz uzunluğu, sınıf filtresi, reset.
-- `tests/test_video.py` (10 test) — kare sayısı, stride davranışı (atlanan
-  karelerin son çizilmiş kareyle doldurulması dahil), ilerleme callback'i,
-  hatalı dosya.
-- `tests/test_config.py` (8 test) — `custom_models()` keşfi ve hazır modelleri
-  dışarıda bırakması.
-- `tests/test_detector.py` (11 test, 7'si `slow`) — `summarize()` mantığı hızlı;
-  gerçek modelle sınıf sayısı, tespit, filtre, eşik davranışı `slow`.
-- `pyproject.toml` — pytest (marker, testpaths, pythonpath) ve ruff (E/F/I/B/UP,
-  100 karakter) yapılandırması.
-- `.github/workflows/ci.yml` — ruff işi + Python 3.11/3.12/3.13 test matrisi.
-- `requirements-dev.txt`, README'ye CI rozeti ve test bölümü.
-
-**Sonuç:** 55 test, hızlı paket 0.7 sn'de koşuyor, `src/` kapsamı **%91**
-(tracker %98, video %95, config %100). `detector` %54 — model gerektiren
-kısımları yalnızca `slow` testlerde.
-
-**Yol boyunca düzeltilen**
-- CI `pytest`i doğrudan çağırıyordu ve `import src` patlıyordu; `python -m pytest`
-  çalışma dizinini `sys.path`'e eklediği için yerelde sorun görünmüyordu.
-  `pythonpath = ["."]` eklendi — yerelde bare `pytest` ile doğrulandı.
-- Ruff 15 sorun buldu (import sırası, uzun satırlar, `%` formatı); 9'u otomatik,
-  kalanı elle düzeltildi. 9 dosya yeniden formatlandı.
-
-**Bilinen eksikler / notlar**
-- CI'da her iş `torch`u CPU deposundan kuruyor (PyPI sürümü Linux'ta CUDA
-  paketlerini de çekiyor, ~2.5 GB). Yine de kurulum işin çoğu zamanını alıyor.
-- `app.py` test edilmiyor. Streamlit arayüzünü test etmek `streamlit.testing`
-  gerektirir; şimdilik değmez, arayüz elle doğrulanıyor.
-- `scripts/` altındaki eğitim hattı test edilmiyor — gerçek eğitim gerektirdiği
-  için CI'a uygun değil.
-- Coverage rozeti yok, sadece CI çıktısında görünüyor. İstenirse Codecov eklenebilir.
+**Known gaps / notes**
+- 30 epochs is an arbitrary number; `patience=15` never triggered, so longer
+  training might improve things slightly.
+- Only YOLOv8n was tried. A bigger model via `--model yolov8s.pt` would probably
+  lift mAP50-95.
+- The Colab notebook was written but **not run on Colab** — it uses the same
+  ultralytics calls as the local path, but review it on first use.
+- `docs/` currently holds one model's results. Training a second model overwrites
+  the files; if that becomes a thing, fold them into per-model folders.
 
 ---
 
-### ✅ M5 — Docker + dağıtım hattı (2026-08-28)
+### ✅ M4 — Tests + CI (2026-08-28)
 
-**Yapılanlar**
-- `Dockerfile` — python:3.12-slim, torch CPU deposundan, root olmayan kullanıcı
-  (uid 1000, HF Spaces gereği), healthcheck, 8501 portu. Model ağırlıkları,
-  örnekler ve metrikler imaja gömülü.
-- `.dockerignore` — veri setleri, `runs/`, testler ve scriptler imaja girmiyor.
-- `docker-compose.yml` — tek komutla yerel çalıştırma, `outputs/` dışarı bağlı.
-- `config.is_deployed()` — `DEPLOYED` veya HF'in eklediği `SPACE_ID` değişkenine
-  bakıyor; `app.py` webcam sekmesini buna göre hiç oluşturmuyor.
-- `deploy/space-README.md` — HF Space'in kendi README'si (frontmatter'da
+**Done**
+- `tests/conftest.py` — the fake model layer (`FakeModel`, `FakeResult`,
+  `FakeBox`, `FakeDetector`) and a synthetic video fixture. Only as much of
+  ultralytics' output as `TrackSession` uses is imitated.
+- `tests/test_tracker.py` (26 tests) — line counter direction logic, not counting
+  a first sighting, not counting while on one side, going back and forth, a point
+  exactly on the line; `TrackSession` unique counts, durations, trail length,
+  class filter, reset.
+- `tests/test_video.py` (10 tests) — frame count, stride behaviour (including
+  skipped frames repeating the last annotated one), progress callback, bad file.
+- `tests/test_config.py` (8 tests) — `custom_models()` discovery and its
+  exclusion of built-in models.
+- `tests/test_detector.py` (11 tests, 7 of them `slow`) — `summarize()` logic is
+  fast; class count, detection, filter and threshold behaviour with the real
+  model are `slow`.
+- `pyproject.toml` — pytest (marker, testpaths, pythonpath) and ruff
+  (E/F/I/B/UP, 100 characters) configuration.
+- `.github/workflows/ci.yml` — a ruff job plus a Python 3.11/3.12/3.13 test matrix.
+- `requirements-dev.txt`, a CI badge and a tests section in the README.
+
+**Result:** 55 tests, the fast suite runs in 0.7 s, `src/` coverage **91%**
+(tracker 98%, video 95%, config 100%). `detector` sits at 54% — its
+model-dependent parts are only in the `slow` tests.
+
+**Fixed along the way**
+- CI invoked `pytest` directly and `import src` failed; locally it looked fine
+  because `python -m pytest` adds the working directory to `sys.path`. Added
+  `pythonpath = ["."]` and verified with a bare `pytest` locally.
+- Ruff found 15 issues (import order, long lines, `%` formatting); 9 were fixed
+  automatically, the rest by hand. 9 files were reformatted.
+
+**Known gaps / notes**
+- Every CI job installs `torch` from the CPU index (the PyPI build pulls CUDA
+  packages on Linux, ~2.5 GB). Installation still dominates the job time.
+- `app.py` is not tested. Testing a Streamlit UI needs `streamlit.testing`; not
+  worth it for now, the UI is verified by hand.
+- The training pipeline under `scripts/` is not tested — it needs real training,
+  which does not belong in CI.
+- No coverage badge; the number only shows in the CI output. Codecov could be
+  added if wanted.
+
+---
+
+### ✅ M5 — Docker + deployment pipeline (2026-08-28)
+
+**Done**
+- `Dockerfile` — python:3.12-slim, torch from the CPU index, non-root user
+  (uid 1000, required by HF Spaces), healthcheck, port 8501. Model weights,
+  samples and metrics are baked into the image.
+- `.dockerignore` — datasets, `runs/`, tests and scripts stay out of the image.
+- `docker-compose.yml` — one-command local run, with `outputs/` bind-mounted.
+- `config.is_deployed()` — checks `DEPLOYED` or HF's own `SPACE_ID`; `app.py`
+  skips creating the webcam tab accordingly.
+- `deploy/space-README.md` — the Space's own README (frontmatter with
   `sdk: docker`, `app_port: 8501`).
-- `deploy/push_to_hf.sh` — Space'i klonlar, gerekli dosyaları kopyalar, push eder.
-- CI'a `docker` işi: imajı derler, konteyneri başlatır, sağlık kontrolü yapar ve
-  sunucu modunun gerçekten aktif olduğunu doğrular.
-- `tests/test_config.py`'ye 5 test daha (`is_deployed` davranışı). Toplam 60 test.
+- `deploy/push_to_hf.sh` — clones the Space, copies what is needed, pushes.
+- A `docker` job in CI: builds the image, starts the container, health-checks it
+  and verifies that server mode is actually active.
+- 5 more tests in `tests/test_config.py` (`is_deployed` behaviour). 60 in total.
 
-**Doğrulandı**
-- Yerel mod: 5 sekme, webcam var, alt başlıkta "canlı kamera" geçiyor.
-- Sunucu modu (`DEPLOYED=1`): 4 sekme, webcam yok, alt başlık da değişiyor.
-- Docker imajı **bu makinede test edilemedi** (docker kurulu değil); build ve
-  smoke testi CI'da yapılıyor ve geçiyor: imaj derleniyor (~170 sn), konteyner
-  ayağa kalkıyor, sağlık kontrolü yanıt veriyor, sunucu modu aktif.
+**Verified**
+- Local mode: 5 tabs, webcam present, the subtitle mentions the live camera.
+- Server mode (`DEPLOYED=1`): 4 tabs, no webcam, the subtitle changes too.
+- The Docker image **could not be tested on this machine** (docker is not
+  installed); the build and smoke test run in CI and pass: the image builds
+  (~170 s), the container comes up, the health check responds, server mode is on.
 
-**Yol boyunca düzeltilen**
-- Webcam bloğunu ilk denemede `with tab_webcam if show_webcam else nullcontext():`
-  ile sarmıştım. Bu blok içindeki kodu yine çalıştırıyor ve widget'lar ana sayfaya
-  düşüyordu. `if show_webcam:` altına alındı.
-- Bloğun girintisi artınca bir satır 100 karakteri aştı, ruff yakaladı.
+**Fixed along the way**
+- The first attempt wrapped the webcam block in
+  `with tab_webcam if show_webcam else nullcontext():`. That still runs the code
+  inside and the widgets fell onto the main page. Moved under `if show_webcam:`.
+- The extra indentation pushed one line past 100 characters; ruff caught it.
 
-**Bilinen eksikler / notlar**
-- **Canlı demo henüz yayında değil** — HF hesabı ve Space'i Kaan'ın açması
-  gerekiyor. Script ve yapılandırma hazır, README'de link için yer bırakıldı.
-- Ücretsiz katmanda CPU ile video işleme yavaş olacak; uzun videolarda kullanıcı
-  beklemek zorunda. İstenirse arayüze bir süre/boyut sınırı konabilir.
-- İmaj **2.16 GB** (CI'da ölçüldü). Çoğu torch + ultralytics. Küçültmek için
-  `opencv-python-headless`'a geçilebilir (o zaman `libgl1` de gerekmez) veya
-  multi-stage build denenebilir; şimdilik değmez.
-- `docker-compose.yml` içinde `DEPLOYED=1` sabit. Konteynerde webcam zaten
-  çalışmayacağı için doğru, ama Linux'ta `--device /dev/video0` ile denenebilir.
-
----
-
-### ✅ Arayüzü İngilizceye çevirme (2026-08-28)
-
-M5 sonrası, README İngilizceye çevrildikten sonra gelen tamamlayıcı adım.
-
-**Çevrilenler**
-- `app.py` — bütün etiketler, yardım metinleri, mesajlar, buton ve sekme isimleri,
-  indirilen dosya adları (`detected_*.png`, `tracking-data.csv`).
-- `src/config.py` — model etiketleri (`YOLOv8n (fast)` vb.), `Ozel:` → `Custom:`
-  (artık `CUSTOM_PREFIX` sabiti).
-- `src/tracker.py` — çizgi yön isimleri (`asagi/yukari` → `down/up`,
-  `saga/sola` → `right/left`), süre tablosu sütunları (`object`, `seconds`,
-  `frames`, `first_frame`, `last_frame`), özet anahtarları (`total_objects`,
-  `line`, `frames`). `line_from_ratio` artık `horizontal`/`vertical` alıyor.
-- `src/video.py` — hata mesajları.
-- `scripts/evaluate.py` — `metrics.json` anahtarları (`overall`, `per_class`,
-  `class`) ve markdown başlıkları.
-- `scripts/compare.py` — görsel üstündeki şeritler ("Pretrained COCO model" /
-  "Our own model"), özet ızgara adı `ozet.jpg` → `summary.jpg`.
-- `deploy/space-README.md` — "arayüz Türkçe" notu kaldırıldı.
-
-**Yeniden üretilenler:** `docs/metrics.{json,md}`, `docs/comparison/*` (7 görsel),
-`docs/screenshots/*` (`tespit.jpg` → `detection.jpg`,
-`model-performansi.jpg` → `model-performance.jpg`), `docs/demo.gif`.
-
-**Testler:** 65 test, hepsi yeni isimlere göre güncellendi. Çizgi yön mantığı
-üç senaryoda tekrar doğrulandı (`right: 4`, `down: 4`, `left: 4`).
-
-**Yol boyunca düzeltilen**
-- Demo GIF'inde modele geçiş sırası değiştirildi. Önce yaban hayatı modeline
-  geçip sonra metrik sekmesine gidince, model otobüs fotoğrafını yeniden
-  değerlendirip "elephant 0.43" gibi alan dışı tespitler üretiyordu — doğru ama
-  izleyene modelin kötü olduğunu düşündüren bir kare. Artık önce sekmeye geçilip
-  sonra model değiştiriliyor.
-- `metrics.json` anahtarları değişince `app.py`'nin okuduğu alanlar da
-  değişmek zorundaydı; `evaluate.py` yeniden çalıştırılarak dosya üretildi.
-
-**Kalan:** Kod yorumları ve CLAUDE.md hâlâ Türkçe. Uluslararası bir kod
-incelemesi için yorumların da çevrilmesi gerekebilir — ayrı bir karar.
+**Known gaps / notes**
+- **The live demo is not published yet** — Kaan has to create the HF account and
+  the Space. The script and configuration are ready, and the README has a slot
+  for the link.
+- Video processing on a free-tier CPU will be slow; users will wait on long
+  videos. A duration/size limit could be added to the UI if wanted.
+- The image is **2.16 GB** (measured in CI), mostly torch + ultralytics. To
+  shrink it, `opencv-python-headless` is an option (which also drops the need
+  for `libgl1`), or a multi-stage build; not worth it for now.
+- `DEPLOYED=1` is hard-coded in `docker-compose.yml`. Correct, since the webcam
+  would not work in a container anyway, though on Linux `--device /dev/video0`
+  could be tried.
 
 ---
 
-### ✅ Kod yorumlarını İngilizceye çevirme (2026-08-28)
+### ✅ Translating the UI to English (2026-08-28)
 
-Arayüz çevirisinin devamı. Artık **kod tabanında Türkçe metin kalmadı**.
+The follow-up after M5, once the README had been translated.
 
-**Çevrilenler**
-- `src/` (4 dosya), `app.py` — bütün docstring'ler ve satır içi yorumlar
-- `scripts/` (7 dosya) — docstring'ler, argparse yardım metinleri, konsol çıktısı
-- `tests/` (5 dosya) — yorumlar, docstring'ler, yerel değişken isimleri ve
-  **65 test fonksiyonunun tamamının adı** (`test_soldan_saga_gecis_saga_sayilir`
-  → `test_left_to_right_counts_as_right`)
+**Translated**
+- `app.py` — every label, help text, message, button and tab name, and the
+  downloaded filenames (`detected_*.png`, `tracking-data.csv`).
+- `src/config.py` — model labels (`YOLOv8n (fast)` and so on), `Ozel:` ->
+  `Custom:` (now the `CUSTOM_PREFIX` constant).
+- `src/tracker.py` — line direction names (`asagi/yukari` -> `down/up`,
+  `saga/sola` -> `right/left`), duration table columns (`object`, `seconds`,
+  `frames`, `first_frame`, `last_frame`), summary keys (`total_objects`, `line`,
+  `frames`). `line_from_ratio` now takes `horizontal`/`vertical`.
+- `src/video.py` — error messages.
+- `scripts/evaluate.py` — `metrics.json` keys (`overall`, `per_class`, `class`)
+  and the markdown headings.
+- `scripts/compare.py` — the banners on the images ("Pretrained COCO model" /
+  "Our own model"), summary grid renamed `ozet.jpg` -> `summary.jpg`.
+- `deploy/space-README.md` — dropped the "the interface is in Turkish" note.
+
+**Regenerated:** `docs/metrics.{json,md}`, `docs/comparison/*` (7 images),
+`docs/screenshots/*` (`tespit.jpg` -> `detection.jpg`, `model-performansi.jpg`
+-> `model-performance.jpg`), `docs/demo.gif`.
+
+**Tests:** 65 tests, all updated to the new names. The line direction logic was
+verified again in three scenarios (`right: 4`, `down: 4`, `left: 4`).
+
+**Fixed along the way**
+- Reordered the model switch in the demo GIF. Switching to the wildlife model
+  before opening the metrics tab made it re-evaluate the bus photo and produce
+  out-of-domain hits like "elephant 0.43" — correct, but a frame that makes the
+  model look bad to a viewer. Now the tab is opened first and the model switched
+  after.
+- Changing the `metrics.json` keys forced the fields `app.py` reads to change
+  too; the file was regenerated by rerunning `evaluate.py`.
+
+---
+
+### ✅ Translating code comments to English (2026-08-28)
+
+A continuation of the UI translation. **No Turkish text was left in the codebase.**
+
+**Translated**
+- `src/` (4 files) and `app.py` — every docstring and inline comment
+- `scripts/` (7 files) — docstrings, argparse help text, console output
+- `tests/` (5 files) — comments, docstrings, local variable names and **all 65
+  test function names** (`test_soldan_saga_gecis_saga_sayilir` ->
+  `test_left_to_right_counts_as_right`)
 - `Dockerfile`, `docker-compose.yml`, `.gitignore`, `.dockerignore`,
   `pyproject.toml`, `requirements*.txt`, `.github/workflows/ci.yml`,
   `deploy/push_to_hf.sh`
-- `notebooks/train_colab.ipynb` — markdown hücreleri ve kod yorumları
+- `notebooks/train_colab.ipynb` — markdown cells and code comments
 
-**Doğrulandı:** 65 test geçiyor, ruff temiz, altı script de `--help` ile
-çalışıyor, `download_samples.py` gerçekten koştu. Türkçe kelime taraması
-(regex ile 50+ Türkçe kelime/ek) sıfır sonuç veriyor.
-
-**Çevrilmeyenler (bilerek):** bu dosya ve `README.tr.md`. İkisi de kod değil —
-biri geliştirme günlüğü, diğeri Türkçe okuyanlar için README.
+**Verified:** 65 tests pass, ruff is clean, all six scripts run with `--help`,
+and `download_samples.py` was actually run. A regex sweep over 50+ Turkish words
+and suffixes returns nothing.
 
 ---
 
-## Sıradaki milestone'lar
+### ✅ Translating this file to English (2026-08-28)
 
-### 🔜 Sonraki adım — demoyu yayına al
-HF hesabı aç, Docker SDK'sıyla bir Space oluştur, `./deploy/push_to_hf.sh` ile
-gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
+The last Turkish artefact besides `README.tr.md`.
 
-### 💡 Fikir havuzu (sıralı değil)
-- CLI arayüzü (`python detect.py --image foo.jpg`) — batch işler için.
-- Isı haritası / yoğunluk görselleştirmesi.
-- Tespit sonuçlarını JSON olarak dışa aktarma (takip CSV'si M2'de eklendi).
-- BoT-SORT seçeneği: uzun süre kaybolan nesneyi re-ID ile hatırlar.
-- Kendi topladığın görsellerle ikinci bir veri seti (M3 altyapısı hazır).
-- Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
-- `streamlit.testing` ile arayüz testleri.
-- Codecov entegrasyonu ve kapsam rozeti.
-- Demoda video boyutu/süresi sınırı (ücretsiz CPU'yu korumak için).
-- Takip modunun hareketli demosu — arayüz turu GIF'i var ama takip modu
-  içinde yok. Ultralytics'in örnek videolarının hepsi ya kendi demo çıktıları
-  (üzerinde başkasının kutuları basılı) ya da 1 saniyeden kısa. Telifsiz bir
-  stok video ya da Kaan'ın kendi çektiği görüntü gerekiyor.
-- Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.
+Translated in place, without keeping a Turkish copy. Reasoning: this is a
+working document updated at every milestone, and two copies would drift apart —
+the two READMEs already carry an "update both" burden. `README.tr.md` stays
+because it is public-facing and worth having in two languages.
+
+Historical entries keep their original numbers (M4's "55 tests, 91%", M5's "60
+tests") — this is a log, and later entries record how those figures changed.
+
+---
+
+## Upcoming
+
+### 🔜 Next step — publish the demo
+Create an HF account, make a Space with the Docker SDK, push with
+`./deploy/push_to_hf.sh` and put the link in the README. That is the only thing
+left; the infrastructure is ready.
+
+### 💡 Idea pool (unordered)
+- A CLI (`python detect.py --image foo.jpg`) for batch work.
+- Heatmap / density visualisation.
+- Exporting detection results as JSON (the tracking CSV came in M2).
+- A BoT-SORT option: remembers a long-lost object through re-ID.
+- A second dataset from images you collect yourself (the M3 pipeline is ready).
+- Training and comparing a bigger model (`yolov8s/m`).
+- UI tests with `streamlit.testing`.
+- Codecov integration and a coverage badge.
+- A video size/duration limit in the demo, to protect the free-tier CPU.
+- An animated demo of tracking mode — there is a UI tour GIF, but tracking is
+  not in it. Every one of Ultralytics' sample videos is either their own demo
+  output (with someone else's boxes burned in) or under a second long. This
+  needs a royalty-free stock clip or footage Kaan shoots himself.
+- A model comparison tab: n/s/m results side by side on the same image.

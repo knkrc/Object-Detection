@@ -270,8 +270,8 @@ Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).
   ultralytics kurulumu kendi başlatmaya çalışır ama yeniden başlatma ister.
 - Webcam sekmesi macOS'ta kamera izni ister; izin verdikten sonra terminali
   yeniden başlatman gerekebilir.
-- **Kod tabanının tamamı İngilizce** — arayüz, yorumlar, testler ve altyapı
-  dosyaları. Bu dosya ile CLAUDE.md (geliştirme günlüğü) bilerek Türkçe.
+- **Projenin tamamı İngilizce** — arayüz, yorumlar, testler, altyapı dosyaları
+  ve CLAUDE.md. Bu dosya tek istisna: İngilizce README'nin Türkçe karşılığı.
 - Örnek görseller [Ultralytics](https://ultralytics.com)'in herkese açık demo görselleridir.
 
 ## Lisans
