@@ -1,6 +1,6 @@
-# Yerelde tek komutla calistirmak icin:
+# To run it locally with one command:
 #   docker compose up --build
-# Sonra http://localhost:8501
+# Then open http://localhost:8501
 
 services:
   app:
@@ -8,10 +8,10 @@ services:
     ports:
       - "8501:8501"
     environment:
-      # Yerelde webcam sekmesini gormek istersen 0 yap. Ama konteynerin
-      # host kamerasina erisimi yok; macOS ve Windows'ta bu zaten calismaz.
+      # Set to 0 to see the webcam tab locally. Note the container has no
+      # access to the host camera; on macOS and Windows it will not work anyway.
       DEPLOYED: "1"
     volumes:
-      # Islenmis videolar konteyner disinda kalsin
+      # Keep processed videos outside the container
       - ./outputs:/home/user/app/outputs
     restart: unless-stopped

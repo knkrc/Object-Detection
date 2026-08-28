@@ -1,7 +1,7 @@
-"""YOLOv8 modelinin etrafina ince bir sarmalayici.
+"""A thin wrapper around the YOLOv8 model.
 
-Amac: Streamlit tarafinin ultralytics detaylariyla ugrasmamasi.
-Model bir kez yuklenir, sonra tek tek kareler/resimler uzerinde calisir.
+The point is to keep the Streamlit side out of ultralytics' details. The model
+is loaded once, then run on individual images or frames.
 """
 
 import shutil
@@ -17,7 +17,7 @@ from src.config import MODELS_DIR
 
 @dataclass
 class Detection:
-    """Tek bir tespit sonucu."""
+    """A single detection."""
 
     label: str
     confidence: float
@@ -25,19 +25,19 @@ class Detection:
 
 
 def resolve_weights(weights: str) -> str:
-    """models/ altindaki agirligi varsa onu kullanir.
+    """Prefers the weights under models/ when they are already there.
 
-    Yoksa ismi oldugu gibi doner; ultralytics o zaman kendi indirir.
+    Otherwise returns the name as-is, and ultralytics downloads it itself.
     """
     path = MODELS_DIR / weights
     return str(path) if path.exists() else weights
 
 
 def stash_weights(weights: str) -> None:
-    """Ultralytics indirmeyi calisma dizinine yapiyor; dosyayi models/ altina tasir.
+    """Ultralytics downloads into the working directory; move the file to models/.
 
-    Aksi halde her yeni agirlik proje kokunu kirletiyor ve bir dahaki sefere
-    yeniden indiriliyor.
+    Otherwise every new weights file litters the project root and gets
+    downloaded again next time.
     """
     target = MODELS_DIR / weights
     downloaded = Path(weights)
@@ -53,13 +53,13 @@ class Detector:
 
     @property
     def class_names(self) -> list[str]:
-        """Modelin tanidigi tum sinif isimleri (COCO icin 80 tane)."""
+        """Every class name the model knows (80 of them for COCO)."""
         return list(self.model.names.values())
 
     def class_ids(self, keep: list[str] | None) -> list[int] | None:
-        """Sinif isimlerini ultralytics'in bekledigi id listesine cevirir.
+        """Converts class names into the id list ultralytics expects.
 
-        Tracker da ayni donusume ihtiyac duydugu icin bu metod disari acik.
+        Public because the tracker needs the same conversion.
         """
         if not keep:
             return None
@@ -71,9 +71,9 @@ class Detector:
         conf: float = 0.35,
         keep_classes: list[str] | None = None,
     ) -> tuple[np.ndarray, list[Detection]]:
-        """Bir BGR resmi isler.
+        """Runs the model on one BGR image.
 
-        Donen deger: (kutulari cizilmis resim, tespit listesi)
+        Returns: (image with boxes drawn, list of detections)
         """
         results = self.model.predict(
             source=image,
@@ -98,5 +98,5 @@ class Detector:
 
 
 def summarize(detections: list[Detection]) -> dict[str, int]:
-    """'2 kisi, 1 araba' seklinde ozet cikarmak icin sinif sayilari."""
+    """Per-class counts, for summaries like "2 people, 1 car"."""
     return dict(Counter(d.label for d in detections).most_common())

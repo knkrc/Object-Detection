@@ -1,9 +1,9 @@
-# Ana bagimliliklar. Kurulum:
+# Main dependencies. Install with:
 #   python -m venv .venv && source .venv/bin/activate
 #   pip install -r requirements.txt
 
-ultralytics>=8.3        # YOLOv8 modeli (torch, torchvision, opencv'yi de getirir)
-streamlit>=1.40         # web arayuzu
-opencv-python>=4.10     # resim/video okuma-yazma
-lap>=0.5.12             # ByteTrack'in eslestirme adimi (yoksa takip calismaz)
+ultralytics>=8.3        # YOLOv8 model (brings torch, torchvision and opencv)
+streamlit>=1.40         # web interface
+opencv-python>=4.10     # reading and writing images and video
+lap>=0.5.12             # ByteTrack's matching step (tracking fails without it)
 numpy>=1.26

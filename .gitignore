@@ -5,14 +5,14 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Model agirliklari (calistiginca otomatik iner)
+# Model weights (downloaded automatically on first run)
 models/*.pt
 *.pt
-# ...ama kendi egittigimiz model repoda dursun: klonlayan kisi
-# 31 dakika egitim beklemeden "Ozel:" modelini deneyebilsin (5.9 MB).
+# ...but keep the model we trained in the repo, so whoever clones it can try
+# the "Custom:" model without waiting 31 minutes for training (5.9 MB).
 !models/african-wildlife.pt
 
-# Uygulama ciktilari
+# Application output
 outputs/
 *.mp4
 !samples/*.mp4
@@ -25,11 +25,11 @@ outputs/
 # Streamlit
 .streamlit/secrets.toml
 
-# Egitim
+# Training
 datasets/
 runs/
 
-# Test artefaktlari
+# Test artefacts
 .coverage
 .pytest_cache/
 htmlcov/

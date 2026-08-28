@@ -277,7 +277,9 @@ See [CLAUDE.md](CLAUDE.md) for details and notes from each milestone.
   ultralytics tries to install it itself but then asks for a restart.
 - The webcam tab asks for camera permission on macOS; you may need to restart your
   terminal after granting it.
-- The app's interface is in English. Code comments and `CLAUDE.md` are in Turkish.
+- The codebase is in English throughout — interface, comments, tests and
+  infrastructure files. `CLAUDE.md` (the development log) and `README.tr.md`
+  are deliberately kept in Turkish.
 - Sample images are [Ultralytics'](https://ultralytics.com) public demo images.
 
 ## License

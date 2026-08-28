@@ -1,12 +1,12 @@
-"""Egitilmis modeli dogrulama setinde olcer ve metrikleri docs/ altina yazar.
+"""Measures a trained model on the validation set and writes metrics to docs/.
 
-Ornek:
+Example:
     python scripts/evaluate.py --model models/african-wildlife.pt
 
-Ciktilar:
-    docs/metrics.json  — ham sayilar
-    docs/metrics.md    — README'ye yapistirilabilir tablo
-    docs/plots/        — egitim grafikleri ve confusion matrix (runs/ git'e girmiyor)
+Output:
+    docs/metrics.json  - the raw numbers
+    docs/metrics.md    - a table you can paste into the README
+    docs/plots/        - training plots and confusion matrix (runs/ is gitignored)
 """
 
 import argparse
@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.config import DOCS_DIR, RUNS_DIR  # noqa: E402
 
-# Ultralytics'in urettigi, README'de gostermeye deger grafikler
+# The plots ultralytics produces that are worth showing in the README
 PLOT_FILES = [
     "results.png",
     "confusion_matrix_normalized.png",
@@ -38,13 +38,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--run",
         default=None,
-        help="Grafiklerin kopyalanacagi egitim klasoru (varsayilan: runs/<veri seti adi>)",
+        help="Training folder to copy plots from (default: runs/<dataset name>)",
     )
     return parser.parse_args()
 
 
 def collect_metrics(metrics, names: dict[int, str]) -> dict:
-    """Ultralytics'in metrik nesnesinden ise yarayan sayilari cikarir."""
+    """Pulls the useful numbers out of ultralytics' metrics object."""
     box = metrics.box
     overall = {
         "mAP50": round(float(box.map50), 4),
@@ -99,7 +99,7 @@ def as_markdown(model_name: str, data: str, results: dict) -> str:
 
 
 def copy_plots(run_dir: Path) -> list[str]:
-    """Egitim grafiklerini docs/plots'a kopyalar — runs/ git'e girmiyor."""
+    """Copies the training plots into docs/plots — runs/ is gitignored."""
     target = DOCS_DIR / "plots"
     target.mkdir(parents=True, exist_ok=True)
 
@@ -138,8 +138,8 @@ def main() -> None:
     copied = copy_plots(run_dir) if run_dir.exists() else []
 
     print(as_markdown(model_path.name, args.data, results))
-    print(f"Yazildi: {DOCS_DIR / 'metrics.json'}, {DOCS_DIR / 'metrics.md'}")
-    print(f"Kopyalanan grafikler ({len(copied)}): {', '.join(copied) or 'yok'}")
+    print(f"Written: {DOCS_DIR / 'metrics.json'}, {DOCS_DIR / 'metrics.md'}")
+    print(f"Plots copied ({len(copied)}): {', '.join(copied) or 'none'}")
 
 
 if __name__ == "__main__":

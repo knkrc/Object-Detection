@@ -1,15 +1,15 @@
-"""README icin arayuz turu GIF'i uretir.
+"""Produces the UI tour GIF used in the README.
 
-Playwright uygulamayi gezerken ekrani video olarak kaydediyor, sonra ffmpeg
-onu GIF'e ceviriyor. Tur adimlari `tour()` icinde; arayuz degistikce burasi
-guncellenir ve tek komutla GIF yenilenir.
+Playwright records the screen as video while walking through the app, then
+ffmpeg turns that into a GIF. The tour steps live in `tour()`; update them when
+the UI changes and the GIF can be refreshed with one command.
 
-Onkosullar:
+Requires:
     pip install -r requirements-dev.txt
     playwright install chromium
     ffmpeg  (brew install ffmpeg)
 
-Kullanim:
+Usage:
     python scripts/make_demo_gif.py
 """
 
@@ -33,37 +33,37 @@ VIEWPORT = {"width": 1280, "height": 780}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8598)
-    parser.add_argument("--width", type=int, default=720, help="GIF genisligi (piksel)")
-    parser.add_argument("--fps", type=int, default=8, help="GIF kare hizi")
+    parser.add_argument("--width", type=int, default=720, help="GIF width in pixels")
+    parser.add_argument("--fps", type=int, default=8, help="GIF frame rate")
     return parser.parse_args()
 
 
 def tour(page) -> None:
-    """Uygulamada gezerken gosterilmeye deger ne varsa sirayla acar.
+    """Walks through everything in the app that is worth showing.
 
-    Bekleme sureleri bilerek uzun: izleyen kisinin neyin degistigini fark
-    etmesi gerekiyor, hizli gecen bir GIF hicbir sey anlatmiyor.
+    The waits are deliberately long: a viewer has to notice what changed, and a
+    GIF that races through its steps tells you nothing.
     """
-    # 1. Ornek goruntude tespit: 3 insan + 1 otobus
+    # 1. Detection on a sample image: 3 people + 1 bus
     open_tab(page, "Samples")
     page.wait_for_timeout(2500)
 
-    # 2. Sinif filtresi: sadece insan -> otobus kutusu kayboluyor.
-    #    Liste sanallastirilmis oldugu icin secenege ancak yazarak ulasiliyor;
-    #    zaten yazmak GIF'te aramanin calistigini da gosteriyor.
+    # 2. Class filter set to person -> the bus box disappears.
+    #    The option list is virtualised, so the only way to reach an entry is to
+    #    type; that also shows the search working in the GIF.
     page.get_by_role("combobox").nth(1).click()
     page.wait_for_timeout(600)
     page.keyboard.type("person", delay=110)
     page.wait_for_timeout(1000)
     page.get_by_role("option", name="person", exact=True).click()
     page.wait_for_timeout(700)
-    # Acik dropdown sayfanin geri kalanini aria-hidden yapiyor; kapatmadan
-    # diger widget'lara erisilemiyor.
+    # An open dropdown marks the rest of the page aria-hidden; the other
+    # widgets are unreachable until it is closed.
     page.keyboard.press("Escape")
     page.wait_for_timeout(3000)
 
-    # 3. Filtreyi temizle — sonraki adimda yaban hayati modeline gececegiz ve
-    #    "person" o modelde olmadigi icin hicbir sey bulunamazdi.
+    # 3. Clear the filter — we switch to the wildlife model next, and "person"
+    #    is not one of its classes, so nothing would be found.
     page.get_by_role("combobox").nth(1).click()
     page.wait_for_timeout(400)
     page.keyboard.press("Backspace")
@@ -71,18 +71,18 @@ def tour(page) -> None:
     page.keyboard.press("Escape")
     page.wait_for_timeout(2500)
 
-    # 4. Once metrik sekmesine gec, sonra modeli degistir.
-    #    Ters sirada yapinca yaban hayati modeli otobus fotografini yeniden
-    #    degerlendiriyor ve "elephant 0.43" gibi alan disi tespitler cikiyor —
-    #    dogru ama izleyene modelin kotu oldugunu dusundurten bir kare.
+    # 4. Open the metrics tab first, then switch models.
+    #    The other way round, the wildlife model re-evaluates the bus photo and
+    #    produces out-of-domain hits like "elephant 0.43" — correct behaviour,
+    #    but a frame that makes the model look bad to a viewer.
     open_tab(page, "Model performance", settle=2000)
     page.wait_for_timeout(1500)
 
-    # 5. Kendi egittigimiz modele gec -> kenar cubugu yesile doner, siniflar degisir
+    # 5. Switch to our own model -> the sidebar turns green, classes change
     select_model(page, "Custom: african-wildlife", settle=2500)
     page.wait_for_timeout(2500)
 
-    # 6. Metrikler ve once/sonra karsilastirmasi
+    # 6. Metrics and the before/after comparison
     for _ in range(6):
         page.mouse.wheel(0, 260)
         page.wait_for_timeout(380)
@@ -90,10 +90,10 @@ def tour(page) -> None:
 
 
 def to_gif(source: Path, target: Path, width: int, fps: int) -> None:
-    """ffmpeg ile GIF'e cevirir.
+    """Converts to GIF with ffmpeg.
 
-    Iki gecis: once renk paleti cikariliyor, sonra o paletle kodlaniyor.
-    Tek gecisli donusum GIF'in 256 renk sinirinda berbat gorunuyor.
+    Two passes: extract a colour palette, then encode against it. A single-pass
+    conversion looks awful within the GIF format's 256-colour limit.
     """
     palette = target.with_suffix(".palette.png")
     scale = f"fps={fps},scale={width}:-1:flags=lanczos"
@@ -130,11 +130,11 @@ def to_gif(source: Path, target: Path, width: int, fps: int) -> None:
 
 
 def warm_up(browser, url: str) -> None:
-    """Ozel modeli kayit baslamadan once yukletir.
+    """Loads the custom model before recording starts.
 
-    Model `@st.cache_resource` ile sunucu tarafinda tutuluyor. Isitmazsak
-    tur sirasinda modele gecerken ekran ~3 saniye bos kaliyor ve GIF'te
-    uygulama donmus gibi gorunuyor.
+    The model is cached server-side by `@st.cache_resource`. Without warming it
+    up, switching to it mid-tour leaves the screen blank for ~3 seconds, which
+    looks like the app has frozen.
     """
     context = browser.new_context(viewport=VIEWPORT)
     page = context.new_page()
@@ -147,11 +147,11 @@ def warm_up(browser, url: str) -> None:
 def main() -> None:
     args = parse_args()
     if not shutil.which("ffmpeg"):
-        raise SystemExit("ffmpeg bulunamadi. macOS'ta: brew install ffmpeg")
+        raise SystemExit("ffmpeg not found. On macOS: brew install ffmpeg")
 
     from playwright.sync_api import sync_playwright
 
-    print("Streamlit baslatiliyor...")
+    print("Starting Streamlit...")
     process, url = start_app(args.port)
     workdir = Path(tempfile.mkdtemp())
 
@@ -159,7 +159,7 @@ def main() -> None:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
 
-            print("Model isitiliyor...")
+            print("Warming up the model...")
             warm_up(browser, url)
 
             context = browser.new_context(
@@ -171,17 +171,17 @@ def main() -> None:
             page.goto(url)
             page.wait_for_timeout(3000)
 
-            print("Tur cekiliyor...")
+            print("Recording the tour...")
             tour(page)
 
-            context.close()  # video bu satirda yaziliyor
+            context.close()  # the video is written on this line
             browser.close()
 
         recordings = list(workdir.glob("*.webm"))
         if not recordings:
-            raise SystemExit("Playwright video kaydi uretmedi.")
+            raise SystemExit("Playwright produced no video recording.")
 
-        print("GIF'e cevriliyor...")
+        print("Converting to GIF...")
         TARGET.parent.mkdir(parents=True, exist_ok=True)
         to_gif(recordings[0], TARGET, args.width, args.fps)
         print(f"\n{TARGET.relative_to(ROOT)}  ({TARGET.stat().st_size // 1024} KB)")

@@ -124,17 +124,16 @@ docker compose up --build            # konteynerde çalıştır
 
 ## Kod kuralları
 
-- Yorumlar Türkçe, kod/değişken isimleri İngilizce.
-- **Kullanıcıya görünen her şey İngilizce.** Arayüz metinleri, model etiketleri
-  (`Custom: <isim>`), çizgi yön isimleri (`down`/`up`, `right`/`left`), CSV
-  sütunları, `metrics.json` anahtarları ve karşılaştırma görsellerindeki
-  şeritler — hepsi İngilizce. Yeni bir kullanıcı metni eklerken bu ayrımı koru:
-  yorum Türkçe, ekrana çıkan İngilizce.
+- **Kod tabanının tamamı İngilizce.** Yorumlar, docstring'ler, test isimleri,
+  değişken isimleri, arayüz metinleri, `metrics.json` anahtarları, Dockerfile
+  ve CI yorumları — hepsi. Yeni kod yazarken Türkçe yorum ekleme.
+- **Bu dosya (CLAUDE.md) ve README.tr.md Türkçe kalıyor.** Biri geliştirme
+  günlüğü, diğeri Türkçe okuyanlar için; ikisi de kod değil.
+- Docstring'ler *ne yaptığını* değil *neden öyle yaptığını* anlatsın.
 - **İki README var:** `README.md` İngilizce (birincil, uluslararası başvurular
   için), `README.tr.md` Türkçe. İkisi de karşılıklı link veriyor. Bir şey
   değişince **ikisini birden** güncelle — özellikle test sayısı, kapsam yüzdesi
   ve metrikler gibi sayılar.
-- Docstring'ler *ne yaptığını* değil *neden öyle yaptığını* anlatsın.
 - Yeni bir özellik `src/` altında kendi modülüne; `app.py` sadece arayüz olsun.
 - Bağımlılık eklerken hem `requirements.txt` (gevşek) hem
   `requirements-lock.txt` (`pip freeze`) güncellenir.
@@ -405,6 +404,30 @@ incelemesi için yorumların da çevrilmesi gerekebilir — ayrı bir karar.
 
 ---
 
+### ✅ Kod yorumlarını İngilizceye çevirme (2026-08-28)
+
+Arayüz çevirisinin devamı. Artık **kod tabanında Türkçe metin kalmadı**.
+
+**Çevrilenler**
+- `src/` (4 dosya), `app.py` — bütün docstring'ler ve satır içi yorumlar
+- `scripts/` (7 dosya) — docstring'ler, argparse yardım metinleri, konsol çıktısı
+- `tests/` (5 dosya) — yorumlar, docstring'ler, yerel değişken isimleri ve
+  **65 test fonksiyonunun tamamının adı** (`test_soldan_saga_gecis_saga_sayilir`
+  → `test_left_to_right_counts_as_right`)
+- `Dockerfile`, `docker-compose.yml`, `.gitignore`, `.dockerignore`,
+  `pyproject.toml`, `requirements*.txt`, `.github/workflows/ci.yml`,
+  `deploy/push_to_hf.sh`
+- `notebooks/train_colab.ipynb` — markdown hücreleri ve kod yorumları
+
+**Doğrulandı:** 65 test geçiyor, ruff temiz, altı script de `--help` ile
+çalışıyor, `download_samples.py` gerçekten koştu. Türkçe kelime taraması
+(regex ile 50+ Türkçe kelime/ek) sıfır sonuç veriyor.
+
+**Çevrilmeyenler (bilerek):** bu dosya ve `README.tr.md`. İkisi de kod değil —
+biri geliştirme günlüğü, diğeri Türkçe okuyanlar için README.
+
+---
+
 ## Sıradaki milestone'lar
 
 ### 🔜 Sonraki adım — demoyu yayına al
@@ -416,8 +439,6 @@ gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
 - Isı haritası / yoğunluk görselleştirmesi.
 - Tespit sonuçlarını JSON olarak dışa aktarma (takip CSV'si M2'de eklendi).
 - BoT-SORT seçeneği: uzun süre kaybolan nesneyi re-ID ile hatırlar.
-- Kod yorumlarını İngilizceye çevirmek — arayüz ve README İngilizce, yorumlar
-  Türkçe. Uluslararası bir kod incelemesi için gerekebilir.
 - Kendi topladığın görsellerle ikinci bir veri seti (M3 altyapısı hazır).
 - Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
 - `streamlit.testing` ile arayüz testleri.

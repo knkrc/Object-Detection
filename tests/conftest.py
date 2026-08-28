@@ -1,9 +1,9 @@
-"""Ortak test yardimcilari.
+"""Shared test helpers.
 
-Buradaki sahte model, ultralytics'in `model.track()` ciktisinin sadece
-`TrackSession`'in kullandigi kadarini taklit eder. Amac takip mantigini
-(sayim, sure, iz, cizgi gecisi) gercek bir model indirmeden test edebilmek —
-o testler saniyeler yerine milisaniyeler suruyor.
+The fake model here imitates only as much of ultralytics' `model.track()` output
+as `TrackSession` actually touches. That lets us test the tracking logic —
+counting, durations, trails, line crossings — without downloading a real model,
+which turns seconds into milliseconds.
 """
 
 from dataclasses import dataclass, field
@@ -15,7 +15,7 @@ import pytest
 
 @dataclass
 class FakeBox:
-    """ultralytics Boxes'in tek bir satiri gibi davranir."""
+    """Behaves like one row of an ultralytics Boxes object."""
 
     id: np.ndarray | None
     xyxy: np.ndarray
@@ -29,14 +29,14 @@ class FakeResult:
     frame: np.ndarray
 
     def plot(self) -> np.ndarray:
-        # Gercek plot kutulari cizer; testler icin karenin kopyasi yeterli.
+        # The real plot() draws boxes; a copy of the frame is enough for tests.
         return self.frame.copy()
 
 
 @dataclass
 class FakeModel:
     names: dict[int, str]
-    # Her cagrida sirayla donulecek tespit listeleri: [(id, cls, x1,y1,x2,y2), ...]
+    # Detections returned in order, one list per call: [(id, cls, x1,y1,x2,y2), ...]
     script: list[list[tuple]]
     predictor = None
     calls: list[dict] = field(default_factory=list)
@@ -67,7 +67,7 @@ class FakeDetector:
 
 
 def make_detector(script, names=None) -> FakeDetector:
-    """Verilen tespit senaryosunu oynatan sahte bir dedektor kurar."""
+    """Builds a fake detector that plays back the given detection script."""
     return FakeDetector(FakeModel(names or {0: "car", 1: "person"}, script))
 
 
@@ -78,12 +78,12 @@ def blank_frame() -> np.ndarray:
 
 @pytest.fixture
 def synthetic_video(tmp_path):
-    """Belirtilen sayida kareden olusan kucuk bir mp4 uretir."""
+    """Produces a small mp4 with the requested number of frames."""
 
     def build(frames: int = 12, size: tuple[int, int] = (64, 48)) -> "Path":  # noqa: F821
         path = tmp_path / "test.mp4"
         writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 10.0, size)
-        assert writer.isOpened(), "test videosu yazilamadi"
+        assert writer.isOpened(), "could not write the test video"
         for i in range(frames):
             frame = np.full((size[1], size[0], 3), i * 5 % 255, np.uint8)
             writer.write(frame)

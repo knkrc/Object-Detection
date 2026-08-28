@@ -1,45 +1,45 @@
-# Object Detection — Streamlit uygulamasi
+# Object Detection — Streamlit app
 #
-# Yerelde calistirmak icin:
+# To run it locally:
 #   docker build -t object-detection .
 #   docker run -p 8501:8501 object-detection
 #
-# Imaj Hugging Face Spaces ile uyumlu: uygulama root olmayan bir kullanici
-# (uid 1000) altinda calisiyor ve 8501 portunu dinliyor.
+# The image is Hugging Face Spaces compatible: the app runs as a non-root user
+# (uid 1000) and listens on port 8501.
 
 FROM python:3.12-slim
 
-# opencv'nin ihtiyac duydugu sistem kutuphaneleri + saglik kontrolu icin curl
+# System libraries opencv needs, plus curl for the healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# HF Spaces konteynerleri root olmayan kullaniciyla calisiyor; ayni sekilde kuruyoruz
+# HF Spaces containers run as a non-root user; set the image up the same way
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
 WORKDIR /home/user/app
 
-# PyPI'daki torch Linux'ta CUDA paketlerini de cekiyor (~2.5 GB).
-# CPU deposundan kurmak imaji ciddi olcude kucultuyor.
+# The PyPI torch build pulls CUDA packages on Linux (~2.5 GB).
+# Installing from the CPU index shrinks the image considerably.
 RUN pip install --no-cache-dir --user \
         torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Uygulama ve birlikte gelen varliklar. Model agirliklari imajda gomulu geliyor
-# ki konteyner ilk acilista indirme beklemesin.
+# The app and the assets shipped with it. Model weights are baked in so the
+# container does not have to download anything on first start.
 COPY --chown=user app.py .
 COPY --chown=user src/ src/
 COPY --chown=user models/ models/
 COPY --chown=user samples/ samples/
 COPY --chown=user docs/ docs/
 
-# Sunucuda webcam sekmesi anlamsiz (kamera ziyaretcinin degil sunucunun olurdu),
-# bu degisken onu gizliyor. Bkz. src/config.py: is_deployed()
+# The webcam tab is meaningless on a server (the camera would be the server's,
+# not the visitor's); this variable hides it. See src/config.py: is_deployed()
 ENV DEPLOYED=1
 
 EXPOSE 8501

@@ -1,8 +1,8 @@
-"""Video dosyalarini kare kare isleyip yeni bir video yazar.
+"""Processes a video file frame by frame and writes out a new video.
 
-Islemin kendisi (tespit mi, takip mi) buraya ait degil: cagiran taraf bir
-`on_frame(kare) -> cizilmis_kare` fonksiyonu verir. Boylece ayni dongu hem
-tespit hem takip icin kullanilir.
+The work itself (detection or tracking) does not belong here: the caller hands
+in an `on_frame(frame) -> annotated_frame` function. That way the same loop
+serves both detection and tracking.
 """
 
 from collections.abc import Callable
@@ -13,7 +13,7 @@ import numpy as np
 
 
 def video_info(source: Path) -> dict:
-    """Videoyu acmadan once fps/boyut gibi bilgileri okur (arayuz icin)."""
+    """Reads fps/size without processing anything (the UI needs them up front)."""
     capture = cv2.VideoCapture(str(source))
     if not capture.isOpened():
         raise RuntimeError(f"Could not open video: {source}")
@@ -29,7 +29,7 @@ def video_info(source: Path) -> dict:
 
 
 def _writer(path: Path, fps: float, size: tuple[int, int]) -> cv2.VideoWriter:
-    """Tarayicida oynayabilen bir mp4 yazici acmayi dener."""
+    """Tries to open an mp4 writer whose output a browser can play."""
     for codec in ("avc1", "mp4v"):
         writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*codec), fps, size)
         if writer.isOpened():
@@ -45,10 +45,10 @@ def process_video(
     stride: int = 1,
     on_progress: Callable[[float], None] | None = None,
 ) -> dict:
-    """Videoyu isler, `on_frame`'in dondurdugu kareleri `target`'a yazar.
+    """Processes the video, writing whatever `on_frame` returns into `target`.
 
-    `stride` > 1 ise her N karede bir `on_frame` cagrilir, aradaki karelerde
-    son cizilmis kare tekrar yazilir. Uzun videolari belirgin sekilde hizlandirir.
+    With `stride` > 1, `on_frame` is called every Nth frame and the last
+    annotated frame is repeated in between. Speeds up long videos noticeably.
     """
     capture = cv2.VideoCapture(str(source))
     if not capture.isOpened():
