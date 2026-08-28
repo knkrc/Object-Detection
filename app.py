@@ -5,6 +5,7 @@ Calistirmak icin:  streamlit run app.py
 
 import csv
 import io
+import json
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -16,6 +17,7 @@ import streamlit as st
 from src.config import (
     AVAILABLE_MODELS,
     DEFAULT_CONF,
+    DOCS_DIR,
     DEFAULT_FRAME_STRIDE,
     DEFAULT_LINE_POSITION,
     DEFAULT_MODEL,
@@ -24,6 +26,7 @@ from src.config import (
     OUTPUTS_DIR,
     SAMPLES_DIR,
     VIDEO_TYPES,
+    custom_models,
 )
 from src.detector import Detector, summarize
 from src.tracker import TrackSession, line_from_ratio
@@ -192,13 +195,20 @@ def show_tracking_summary(session: TrackSession) -> None:
 
 st.sidebar.title("⚙️ Ayarlar")
 
+# Kendi egittigimiz modeller models/ altinda duruyor; hazir modellerin
+# yanina eklenince tum sekmeler (resim/video/webcam/takip) onlarla da calisir.
+own_models = custom_models()
+model_choices = {**AVAILABLE_MODELS, **own_models}
+
 model_label = st.sidebar.selectbox(
     "Model",
-    list(AVAILABLE_MODELS),
-    index=list(AVAILABLE_MODELS).index(DEFAULT_MODEL),
-    help="Buyuk modeller daha isabetli ama daha yavas. Ilk secimde agirlik dosyasi indirilir.",
+    list(model_choices),
+    index=list(model_choices).index(DEFAULT_MODEL),
+    help="Buyuk modeller daha isabetli ama daha yavas. Ilk secimde agirlik dosyasi indirilir. "
+    "'Ozel:' ile baslayanlar scripts/train.py ile egitilmis kendi modellerimiz.",
 )
-detector = load_detector(AVAILABLE_MODELS[model_label])
+detector = load_detector(model_choices[model_label])
+is_custom = model_label in own_models
 
 conf = st.sidebar.slider(
     "Guven esigi",
@@ -218,6 +228,13 @@ keep_classes = st.sidebar.multiselect(
 
 st.sidebar.divider()
 st.sidebar.caption(f"Model: `{detector.weights}` · {len(detector.class_names)} sinif")
+if is_custom:
+    st.sidebar.success("Kendi egittigimiz model kullaniliyor.")
+    st.sidebar.caption("Siniflar: " + ", ".join(detector.class_names))
+elif not own_models:
+    st.sidebar.caption(
+        "Kendi modelini egitmek icin: `python scripts/train.py`"
+    )
 
 # --------------------------------------------------------------------------
 # Ana sayfa
@@ -226,8 +243,8 @@ st.sidebar.caption(f"Model: `{detector.weights}` · {len(detector.class_names)} 
 st.title("🎯 Object Detection")
 st.caption("YOLOv8 ile resim, video ve canli kamera uzerinde nesne tespiti ve takibi.")
 
-tab_image, tab_video, tab_webcam, tab_samples = st.tabs(
-    ["📷 Resim", "🎬 Video", "📹 Webcam", "🖼️ Ornekler"]
+tab_image, tab_video, tab_webcam, tab_samples, tab_metrics = st.tabs(
+    ["📷 Resim", "🎬 Video", "📹 Webcam", "🖼️ Ornekler", "📊 Model performansi"]
 )
 
 # --- Resim ---------------------------------------------------------------
@@ -400,3 +417,61 @@ with tab_samples:
         with st.spinner("Tespit ediliyor..."):
             annotated, detections = detector.detect(image, conf, keep_classes)
         show_results(image, annotated, detections, f"tespit_{choice.stem}.png")
+
+# --- Model performansi -----------------------------------------------------
+with tab_metrics:
+    metrics_file = DOCS_DIR / "metrics.json"
+
+    if not metrics_file.exists():
+        st.info(
+            "Henuz egitim metrigi yok. Kendi modelini egitip olcmek icin:\n\n"
+            "```\n"
+            "python scripts/train.py --epochs 30\n"
+            "python scripts/evaluate.py\n"
+            "python scripts/compare.py\n"
+            "```"
+        )
+    else:
+        metrics = json.loads(metrics_file.read_text())
+        st.subheader(f"`{metrics['model']}` — {metrics['data']}")
+
+        overall = metrics["genel"]
+        cols = st.columns(4)
+        cols[0].metric("mAP50", f"{overall['mAP50']:.3f}",
+                       help="Kutu ortusmesi %50 esiginde ortalama isabet. Ana basari olcusu.")
+        cols[1].metric("mAP50-95", f"{overall['mAP50-95']:.3f}",
+                       help="%50'den %95'e kadar farkli esiklerin ortalamasi. Daha zorlu olcu.")
+        cols[2].metric("Precision", f"{overall['precision']:.3f}",
+                       help="Bulduklarinin ne kadari dogruydu.")
+        cols[3].metric("Recall", f"{overall['recall']:.3f}",
+                       help="Olmasi gerekenlerin ne kadarini buldu.")
+
+        st.write("**Sinif bazinda**")
+        st.dataframe(metrics["sinif_bazinda"], use_container_width=True, hide_index=True)
+
+        comparisons = sorted((DOCS_DIR / "comparison").glob("*.jpg")) \
+            if (DOCS_DIR / "comparison").exists() else []
+        summary_image = next((p for p in comparisons if p.stem == "ozet"), None)
+        singles = [p for p in comparisons if p.stem != "ozet"]
+
+        if singles:
+            st.divider()
+            st.subheader("Once / sonra")
+            st.caption(
+                "Solda hazir COCO modeli, sagda kendi egittigimiz model — ayni goruntude."
+            )
+            choice = st.selectbox(
+                "Gorsel sec", singles, format_func=lambda p: p.stem, key="compare_pick"
+            )
+            st.image(str(choice), use_container_width=True)
+            if summary_image:
+                with st.expander("Hepsini bir arada gor"):
+                    st.image(str(summary_image), use_container_width=True)
+
+        plots = sorted((DOCS_DIR / "plots").glob("*")) if (DOCS_DIR / "plots").exists() else []
+        if plots:
+            st.divider()
+            st.subheader("Egitim grafikleri")
+            for plot in plots:
+                st.caption(plot.name)
+                st.image(str(plot), use_container_width=True)
