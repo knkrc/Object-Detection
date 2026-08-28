@@ -61,8 +61,10 @@ docker compose up --build            # konteynerde çalıştır
   için bu kurala sadık kalıyoruz.
 - **Model `@st.cache_resource` ile bir kez yüklenir.** Yoksa her etkileşimde
   yeniden yüklenir ve uygulama kullanılamaz hale gelir.
-- **Ağırlıklar `models/` altında, git'e girmez.** İlk çalıştırmada otomatik iner
-  (`Detector.__init__` indirilen dosyayı `models/`'e taşır).
+- **Ağırlıklar `models/` altında, git'e girmez.** İlk çalıştırmada otomatik iner.
+  `detector.resolve_weights()` / `stash_weights()` bu işi yapıyor ve hem
+  `Detector` hem `scripts/train.py` bunları kullanıyor — ultralytics indirmeyi
+  çalışma dizinine yaptığı için, ortak bir yerde tutulmazsa proje kökü kirleniyor.
 - **Video işleme `src/video.py`'de ayrı ve *işten bağımsız*.** `process_video`
   ne yaptığını bilmez; kendisine verilen `on_frame(kare) -> kare` fonksiyonunu
   çağırır. Böylece tespit ve takip aynı döngüyü paylaşır, kod ikiye bölünmez.

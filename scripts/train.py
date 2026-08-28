@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.config import MODELS_DIR, RUNS_DIR  # noqa: E402
+from src.detector import resolve_weights, stash_weights  # noqa: E402
 
 
 def pick_device() -> str:
@@ -67,7 +68,11 @@ def main() -> None:
     print(f"epoch     : {args.epochs}  imgsz: {args.imgsz}  batch: {args.batch}")
     print()
 
-    model = YOLO(args.model)
+    # models/ altinda varsa oradan yukle; yoksa ultralytics indirsin ve
+    # indirdigini models/'a tasiyalim (yoksa proje koku kirleniyor).
+    model = YOLO(resolve_weights(args.model))
+    stash_weights(args.model)
+
     results = model.train(
         data=args.data,
         epochs=args.epochs,

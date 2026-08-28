@@ -24,17 +24,32 @@ class Detection:
     box: tuple[int, int, int, int]  # x1, y1, x2, y2
 
 
+def resolve_weights(weights: str) -> str:
+    """models/ altindaki agirligi varsa onu kullanir.
+
+    Yoksa ismi oldugu gibi doner; ultralytics o zaman kendi indirir.
+    """
+    path = MODELS_DIR / weights
+    return str(path) if path.exists() else weights
+
+
+def stash_weights(weights: str) -> None:
+    """Ultralytics indirmeyi calisma dizinine yapiyor; dosyayi models/ altina tasir.
+
+    Aksi halde her yeni agirlik proje kokunu kirletiyor ve bir dahaki sefere
+    yeniden indiriliyor.
+    """
+    target = MODELS_DIR / weights
+    downloaded = Path(weights)
+    if downloaded.is_file() and not target.exists():
+        shutil.move(str(downloaded), target)
+
+
 class Detector:
     def __init__(self, weights: str = "yolov8n.pt"):
-        # Agirliklar models/ altinda tutulur. Dosya yoksa ultralytics onu
-        # calisma dizinine indirir; biz de indirdikten sonra models/ altina tasiriz.
-        weight_path = MODELS_DIR / weights
-        self.model = YOLO(str(weight_path) if weight_path.exists() else weights)
+        self.model = YOLO(resolve_weights(weights))
         self.weights = weights
-
-        downloaded = Path(weights)
-        if downloaded.is_file() and not weight_path.exists():
-            shutil.move(str(downloaded), weight_path)
+        stash_weights(weights)
 
     @property
     def class_names(self) -> list[str]:

@@ -33,3 +33,4 @@ runs/
 .coverage
 .pytest_cache/
 htmlcov/
+.ruff_cache/

@@ -8,8 +8,9 @@ mantik testleri ve model gerektirmez.
 import cv2
 import pytest
 
+import src.detector as detector_module
 from src.config import MODELS_DIR, SAMPLES_DIR
-from src.detector import Detection, summarize
+from src.detector import Detection, resolve_weights, stash_weights, summarize
 
 # --- model gerektirmeyen testler -----------------------------------------
 
@@ -35,6 +36,58 @@ def test_summarize_bos_liste():
 def test_detection_kutu_koordinatlari():
     detection = Detection(label="car", confidence=0.5, box=(10, 20, 110, 220))
     assert detection.box == (10, 20, 110, 220)
+
+
+# --- agirlik dosyasi yonetimi --------------------------------------------
+# scripts/train.py bir zamanlar YOLO'yu dogrudan cagiriyordu ve ultralytics
+# agirligi proje kokune indiriyordu. Bu testler o davranisin geri gelmemesi icin.
+
+
+def test_resolve_weights_models_altindakini_tercih_eder(tmp_path, monkeypatch):
+    monkeypatch.setattr(detector_module, "MODELS_DIR", tmp_path)
+    (tmp_path / "yolov8n.pt").touch()
+
+    assert resolve_weights("yolov8n.pt") == str(tmp_path / "yolov8n.pt")
+
+
+def test_resolve_weights_yoksa_ismi_dondurur(tmp_path, monkeypatch):
+    """Dosya yoksa ismi oldugu gibi doneriz; ultralytics kendi indirir."""
+    monkeypatch.setattr(detector_module, "MODELS_DIR", tmp_path)
+
+    assert resolve_weights("yolov8s.pt") == "yolov8s.pt"
+
+
+def test_stash_weights_indirileni_models_altina_tasir(tmp_path, monkeypatch):
+    models = tmp_path / "models"
+    models.mkdir()
+    monkeypatch.setattr(detector_module, "MODELS_DIR", models)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "yolov8n.pt").write_bytes(b"sahte agirlik")
+
+    stash_weights("yolov8n.pt")
+
+    assert not (tmp_path / "yolov8n.pt").exists()
+    assert (models / "yolov8n.pt").read_bytes() == b"sahte agirlik"
+
+
+def test_stash_weights_mevcut_dosyanin_uzerine_yazmaz(tmp_path, monkeypatch):
+    models = tmp_path / "models"
+    models.mkdir()
+    monkeypatch.setattr(detector_module, "MODELS_DIR", models)
+    monkeypatch.chdir(tmp_path)
+    (models / "yolov8n.pt").write_bytes(b"mevcut")
+    (tmp_path / "yolov8n.pt").write_bytes(b"yeni")
+
+    stash_weights("yolov8n.pt")
+
+    assert (models / "yolov8n.pt").read_bytes() == b"mevcut"
+
+
+def test_stash_weights_indirilen_yoksa_sessizce_gecer(tmp_path, monkeypatch):
+    monkeypatch.setattr(detector_module, "MODELS_DIR", tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    stash_weights("yolov8n.pt")  # hata firlatmamali
 
 
 # --- gercek model gerektiren testler --------------------------------------
