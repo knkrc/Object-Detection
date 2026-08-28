@@ -116,7 +116,9 @@ docker compose up --build            # run in a container
   copied in; the container downloads nothing on first start. torch is installed
   from the CPU index (the PyPI build pulls CUDA packages on Linux).
 - **The Space is not a copy of the repo.** `deploy/push_to_hf.sh` pushes only
-  what the app needs to run; training scripts, tests and datasets stay out. The
+  what the app needs to run; training scripts, tests, datasets, the demo GIF and
+  the README screenshots stay out (the app reads `docs/metrics.json`,
+  `docs/comparison` and `docs/plots`, nothing else under `docs/`). The
   Space's README is a separate file (`deploy/space-README.md`) because HF reads
   its configuration from README frontmatter, which our own README cannot carry.
 - **Line crossings come from the sign of the cross product.** If the side of the
