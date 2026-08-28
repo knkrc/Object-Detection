@@ -447,10 +447,19 @@ tests") — this is a log, and later entries record how those figures changed.
 
 ## Upcoming
 
-### 🔜 Next step — publish the demo
-Create an HF account, make a Space with the Docker SDK, push with
-`./deploy/push_to_hf.sh` and put the link in the README. That is the only thing
-left; the infrastructure is ready.
+### 🔜 Next step — get the demo actually running
+The Space exists at `knkrc/object-detection` and the README links to it, but as
+of writing it is **not publicly reachable** (HF answers 401 for both private and
+non-existent Spaces, so the two cannot be told apart from outside). Two things
+to check:
+
+1. **Visibility** — Space Settings, "Change visibility" to public. A private
+   Space gives every visitor a 401, which is worse than no link at all.
+2. **Content** — nothing has been pushed yet. Set `HF_TOKEN` and run
+   `./deploy/push_to_hf.sh knkrc/object-detection`; the first build takes a few
+   minutes.
+
+Once it is up, open the link and confirm the app loads.
 
 ### 💡 Idea pool (unordered)
 - A CLI (`python detect.py --image foo.jpg`) for batch work.

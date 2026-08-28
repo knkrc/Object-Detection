@@ -6,9 +6,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
+[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc/object-detection)
 
-> 🚀 *Canlı demo: Hugging Face Space'ini açtıktan sonra linkini buraya ekle —
-> `./deploy/push_to_hf.sh <kullanıcı-adın>/<space-adı>`*
+> 🚀 **[Canlı demoyu dene](https://huggingface.co/spaces/knkrc/object-detection)** — Hugging Face Spaces üzerinde çalışıyor.
 
 YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
 COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
