@@ -54,3 +54,54 @@ jobs:
       # yerelde `pytest -m slow` ile calistirilir.
       - name: Testler
         run: pytest -m "not slow" --cov=src --cov-report=term-missing
+
+  docker:
+    name: Docker imaji
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Imaji derle
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: object-detection:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Imajin sadece derlenmesi yetmez; gercekten ayaga kalkip cevap
+      # verdigini de gormek istiyoruz.
+      - name: Imaj boyutu
+        run: docker images object-detection:ci --format "{{.Size}}"
+
+      - name: Konteyneri baslat
+        run: docker run -d --name od -p 8501:8501 object-detection:ci
+
+      - name: Saglik kontrolu
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8501/_stcore/health; then
+              echo "uygulama ayakta"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "uygulama 60 saniyede ayaga kalkmadi"
+          docker logs od
+          exit 1
+
+      # Sunucu modunda webcam sekmesi olmamali (DEPLOYED=1 Dockerfile'da ayarli)
+      - name: Webcam sekmesi gizli mi
+        run: |
+          docker exec od python -c "
+          from src.config import is_deployed
+          assert is_deployed(), 'DEPLOYED ayarli degil, webcam sekmesi gorunur kalirdi'
+          print('sunucu modu aktif, webcam sekmesi gizli')
+          "
+
+      - name: Loglar
+        if: always()
+        run: docker logs od

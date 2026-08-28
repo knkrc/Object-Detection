@@ -3,6 +3,10 @@
 [![CI](https://github.com/knkrc/Object-Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/knkrc/Object-Detection/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
+
+> 🚀 *Canlı demo: Hugging Face Space'ini açtıktan sonra linkini buraya ekle —
+> `./deploy/push_to_hf.sh <kullanıcı-adın>/<space-adı>`*
 
 YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
 COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
@@ -134,6 +138,8 @@ Object-Detection/
 ├── notebooks/
 │   └── train_colab.ipynb       # GPU'da eğitim
 ├── tests/                      # pytest paketi (hızlı + slow ayrımı)
+├── deploy/                     # HF Spaces README'si ve push scripti
+├── Dockerfile, docker-compose.yml
 ├── docs/                       # metrikler, grafikler, karşılaştırmalar
 ├── samples/                    # örnek görseller
 ├── models/                     # ağırlıklar (kendi modelimiz hariç git'e girmez)
@@ -182,13 +188,65 @@ düşük görünüyor çünkü model gerektiren kısımları yalnızca `slow` te
 **CI** her push ve PR'da çalışıyor: ruff (lint + format) ve Python 3.11 / 3.12 / 3.13
 üzerinde hızlı test paketi. Bkz. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
+---
+
+## Docker ile çalıştırma
+
+```bash
+docker compose up --build
+```
+
+Sonra `http://localhost:8501`. Ya da doğrudan:
+
+```bash
+docker build -t object-detection .
+```
+
+```bash
+docker run -p 8501:8501 object-detection
+```
+
+İmaj (~2.2 GB) kendi kendine yeter: model ağırlıkları (hazır YOLOv8n +
+eğittiğimiz African Wildlife modeli), örnek görseller ve metrikler gömülü
+geliyor, ilk açılışta hiçbir şey indirilmiyor. torch CPU deposundan kuruluyor — PyPI sürümü
+Linux'ta CUDA paketlerini de çekiyor (~2.5 GB).
+
+Konteyner root olmayan bir kullanıcı (uid 1000) altında çalışıyor; bu hem iyi
+bir pratik hem de Hugging Face Spaces'in gereği.
+
+## Canlı demo yayınlama
+
+Hugging Face Spaces'e göndermek için:
+
+1. [huggingface.co](https://huggingface.co)'da hesap aç ve **Docker** SDK'sıyla
+   bir Space oluştur
+2. [Write yetkili bir token](https://huggingface.co/settings/tokens) üret
+3. Gönder:
+
+```bash
+export HF_TOKEN=hf_...
+./deploy/push_to_hf.sh <kullanıcı-adın>/<space-adı>
+```
+
+Script Space'i klonluyor, uygulamanın çalışması için gereken dosyaları kopyalıyor
+(eğitim scriptleri, testler ve veri setleri gitmiyor), Space'in kendi README'sini
+[`deploy/space-README.md`](deploy/space-README.md)'den alıp push ediyor.
+
+### Sunucuda webcam neden yok?
+
+Webcam sekmesi `cv2.VideoCapture(0)` ile **uygulamanın çalıştığı makinenin**
+kamerasını açıyor. Yerelde bu senin kameran; sunucuda ise ziyaretçinin değil
+sunucunun kamerası olurdu — yani işe yaramaz. Bu yüzden `DEPLOYED=1` (veya HF'in
+eklediği `SPACE_ID`) varken o sekme hiç oluşturulmuyor. Yerelde çalışmaya
+devam ediyor.
+
 ## Yol haritası
 
 - [x] **M1** — Resim, video, webcam ve örneklerle çalışan temel uygulama
 - [x] **M2** — Nesne takibi: ByteTrack, benzersiz sayım, çizgi geçişi, hareket izi
 - [x] **M3** — Kendi veri setiyle fine-tune: African Wildlife, mAP50 0.957
 - [x] **M4** — Testler (55 test, %91 kapsam) + GitHub Actions CI
-- [ ] **M5** — Docker + canlı demo (Streamlit Cloud / Hugging Face Spaces)
+- [x] **M5** — Docker imajı + Hugging Face Spaces deploy hattı
 
 Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).
 

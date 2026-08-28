@@ -1,5 +1,6 @@
 """Uygulama genelinde kullanilan sabitler."""
 
+import os
 from pathlib import Path
 
 # Proje kok dizini (src/config.py -> src -> kok)
@@ -24,6 +25,22 @@ AVAILABLE_MODELS = {
 }
 
 DEFAULT_MODEL = "YOLOv8n (hizli)"
+
+
+def is_deployed() -> bool:
+    """Uygulama bir sunucuda mi calisiyor?
+
+    Webcam sekmesi `cv2.VideoCapture(0)` ile *calisan makinenin* kamerasini
+    aciyor. Yerelde bu kullanicinin kamerasi, sunucuda ise (varsa) sunucunun
+    kamerasi olurdu — yani ziyaretci icin anlamsiz. Sunucuda o sekmeyi
+    gizliyoruz.
+
+    `DEPLOYED` degiskeni Dockerfile'da ayarlaniyor; `SPACE_ID` ise Hugging Face
+    Spaces'in kendi ekledigi degisken.
+    """
+    if os.getenv("DEPLOYED", "").strip().lower() in {"1", "true", "yes"}:
+        return True
+    return bool(os.getenv("SPACE_ID"))
 
 
 def custom_models() -> dict[str, str]:
