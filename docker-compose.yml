@@ -1,0 +1,17 @@
+# Yerelde tek komutla calistirmak icin:
+#   docker compose up --build
+# Sonra http://localhost:8501
+
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      # Yerelde webcam sekmesini gormek istersen 0 yap. Ama konteynerin
+      # host kamerasina erisimi yok; macOS ve Windows'ta bu zaten calismaz.
+      DEPLOYED: "1"
+    volumes:
+      # Islenmis videolar konteyner disinda kalsin
+      - ./outputs:/home/user/app/outputs
+    restart: unless-stopped

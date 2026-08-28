@@ -28,6 +28,7 @@ kod okunduğunda ne yaptığı anlaşılmalı.
 | Streamlit | Hızlı, görsel arayüz — portfolyoda ekran görüntüsü almak kolay |
 | MPS (Apple Silicon) | Eğitim burada dönüyor; Colab notebook'u GPU alternatifi |
 | pytest + ruff | Test ve lint; ikisi de `pyproject.toml`'da yapılandırılıyor |
+| Docker | Dağıtım; aynı imaj hem yerelde hem Hugging Face Spaces'te çalışıyor |
 
 ## Komutlar
 
@@ -44,6 +45,9 @@ pytest                               # tüm testler
 pytest -m "not slow"                 # hızlı olanlar (CI'ın koştuğu)
 pytest -m slow                       # gerçek modeli çalıştıranlar
 ruff check . && ruff format .        # lint + format
+
+docker compose up --build            # konteynerde çalıştır
+./deploy/push_to_hf.sh <user>/<space>  # HF Spaces'e gönder (HF_TOKEN gerekir)
 ```
 
 ## Mimari kararlar
@@ -86,6 +90,18 @@ ruff check . && ruff format .        # lint + format
 - **`pythonpath = ["."]` pytest yapılandırmasında şart.** CI `pytest` komutunu
   doğrudan çağırıyor; `python -m pytest`ten farklı olarak çalışma dizinini
   `sys.path`'e eklemiyor ve `import src` patlıyor.
+- **`is_deployed()` webcam sekmesini sunucuda gizliyor.** `cv2.VideoCapture(0)`
+  uygulamanın *çalıştığı makinenin* kamerasını açıyor; sunucuda bu ziyaretçinin
+  değil sunucunun kamerası olurdu. Sekme oluşturulmuyor bile — blok bir
+  `if show_webcam:` altında, yoksa widget'lar ana sayfaya sızardı.
+- **Docker imajı kendi kendine yeter.** Model ağırlıkları, örnekler ve metrikler
+  imaja kopyalanıyor; konteyner ilk açılışta hiçbir şey indirmiyor. torch CPU
+  deposundan kuruluyor (PyPI sürümü Linux'ta CUDA paketlerini de çekiyor).
+- **Space, reponun kopyası değil.** `deploy/push_to_hf.sh` yalnızca uygulamanın
+  çalışması için gerekenleri gönderiyor; eğitim scriptleri, testler ve veri
+  setleri Space'e gitmiyor. Space'in README'si ayrı bir dosya
+  (`deploy/space-README.md`) çünkü HF yapılandırmayı README frontmatter'ından
+  okuyor ve bizim README'miz onu taşıyamaz.
 - **Çizgi geçişi vektörel çarpımın işaretiyle bulunur.** Nesne merkezinin
   çizgiye göre tarafı iki kare arasında değiştiyse geçmiştir; işaretin yönü de
   giriş/çıkış ayrımını verir. Kesişim hesabı yapmaya gerek yok.
@@ -280,11 +296,52 @@ kısımları yalnızca `slow` testlerde.
 
 ---
 
+### ✅ M5 — Docker + dağıtım hattı (2026-08-28)
+
+**Yapılanlar**
+- `Dockerfile` — python:3.12-slim, torch CPU deposundan, root olmayan kullanıcı
+  (uid 1000, HF Spaces gereği), healthcheck, 8501 portu. Model ağırlıkları,
+  örnekler ve metrikler imaja gömülü.
+- `.dockerignore` — veri setleri, `runs/`, testler ve scriptler imaja girmiyor.
+- `docker-compose.yml` — tek komutla yerel çalıştırma, `outputs/` dışarı bağlı.
+- `config.is_deployed()` — `DEPLOYED` veya HF'in eklediği `SPACE_ID` değişkenine
+  bakıyor; `app.py` webcam sekmesini buna göre hiç oluşturmuyor.
+- `deploy/space-README.md` — HF Space'in kendi README'si (frontmatter'da
+  `sdk: docker`, `app_port: 8501`).
+- `deploy/push_to_hf.sh` — Space'i klonlar, gerekli dosyaları kopyalar, push eder.
+- CI'a `docker` işi: imajı derler, konteyneri başlatır, sağlık kontrolü yapar ve
+  sunucu modunun gerçekten aktif olduğunu doğrular.
+- `tests/test_config.py`'ye 5 test daha (`is_deployed` davranışı). Toplam 60 test.
+
+**Doğrulandı**
+- Yerel mod: 5 sekme, webcam var, alt başlıkta "canlı kamera" geçiyor.
+- Sunucu modu (`DEPLOYED=1`): 4 sekme, webcam yok, alt başlık da değişiyor.
+- Docker imajı **bu makinede test edilemedi** (docker kurulu değil); build ve
+  smoke testi CI'da yapılıyor.
+
+**Yol boyunca düzeltilen**
+- Webcam bloğunu ilk denemede `with tab_webcam if show_webcam else nullcontext():`
+  ile sarmıştım. Bu blok içindeki kodu yine çalıştırıyor ve widget'lar ana sayfaya
+  düşüyordu. `if show_webcam:` altına alındı.
+- Bloğun girintisi artınca bir satır 100 karakteri aştı, ruff yakaladı.
+
+**Bilinen eksikler / notlar**
+- **Canlı demo henüz yayında değil** — HF hesabı ve Space'i Kaan'ın açması
+  gerekiyor. Script ve yapılandırma hazır, README'de link için yer bırakıldı.
+- Ücretsiz katmanda CPU ile video işleme yavaş olacak; uzun videolarda kullanıcı
+  beklemek zorunda. İstenirse arayüze bir süre/boyut sınırı konabilir.
+- İmaj boyutu ölçülmedi (yerelde build edilemedi); torch + ultralytics ile
+  muhtemelen 2-3 GB civarı.
+- `docker-compose.yml` içinde `DEPLOYED=1` sabit. Konteynerde webcam zaten
+  çalışmayacağı için doğru, ama Linux'ta `--device /dev/video0` ile denenebilir.
+
+---
+
 ## Sıradaki milestone'lar
 
-### 🔜 M5 — Dağıtım
-Dockerfile + Hugging Face Spaces veya Streamlit Cloud'da canlı demo.
-README'ye "Live Demo" rozeti — işe alım yapan kişi kodu indirmeden deneyebilsin.
+### 🔜 Sonraki adım — demoyu yayına al
+HF hesabı aç, Docker SDK'sıyla bir Space oluştur, `./deploy/push_to_hf.sh` ile
+gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
 
 ### 💡 Fikir havuzu (sıralı değil)
 - CLI arayüzü (`python detect.py --image foo.jpg`) — batch işler için.
@@ -296,4 +353,6 @@ README'ye "Live Demo" rozeti — işe alım yapan kişi kodu indirmeden deneyebi
 - Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
 - `streamlit.testing` ile arayüz testleri.
 - Codecov entegrasyonu ve kapsam rozeti.
+- Demoda video boyutu/süresi sınırı (ücretsiz CPU'yu korumak için).
+- Ekran görüntüsü / demo GIF — README'de hâlâ yer tutucu duruyor.
 - Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.

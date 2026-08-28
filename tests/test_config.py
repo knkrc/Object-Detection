@@ -6,7 +6,7 @@ konan her .pt dosyasi model listesinde gorunmeli, hazir modeller ise
 """
 
 import src.config as config
-from src.config import AVAILABLE_MODELS, DEFAULT_MODEL, IMAGE_TYPES, VIDEO_TYPES
+from src.config import AVAILABLE_MODELS, DEFAULT_MODEL, IMAGE_TYPES, VIDEO_TYPES, is_deployed
 
 
 def test_varsayilan_model_listede_var():
@@ -57,3 +57,41 @@ def test_custom_models_alfabetik_siralar(tmp_path, monkeypatch):
         (tmp_path / name).touch()
 
     assert list(config.custom_models()) == ["Ozel: aslan", "Ozel: manda", "Ozel: zebra"]
+
+
+# --- is_deployed ---------------------------------------------------------
+# Webcam sekmesi bu fonksiyona bakarak gizleniyor; yanlis pozitif yerelde
+# ozelligi kaybettirir, yanlis negatif sunucuda kirik sekme gosterir.
+
+
+def test_degisken_yoksa_yerel_sayilir(monkeypatch):
+    monkeypatch.delenv("DEPLOYED", raising=False)
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    assert is_deployed() is False
+
+
+def test_deployed_1_ise_sunucu(monkeypatch):
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    monkeypatch.setenv("DEPLOYED", "1")
+    assert is_deployed() is True
+
+
+def test_deployed_dogru_degerleri_kabul_eder(monkeypatch):
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    for value in ("1", "true", "TRUE", "yes", " True "):
+        monkeypatch.setenv("DEPLOYED", value)
+        assert is_deployed() is True, value
+
+
+def test_deployed_bos_veya_0_ise_yerel(monkeypatch):
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    for value in ("", "0", "false", "no", "hayir"):
+        monkeypatch.setenv("DEPLOYED", value)
+        assert is_deployed() is False, value
+
+
+def test_hugging_face_space_id_yeterli(monkeypatch):
+    """HF Spaces bu degiskeni kendi ekliyor; Dockerfile'a guvenmeye gerek yok."""
+    monkeypatch.delenv("DEPLOYED", raising=False)
+    monkeypatch.setenv("SPACE_ID", "knkrc/object-detection")
+    assert is_deployed() is True

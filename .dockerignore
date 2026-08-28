@@ -1,0 +1,33 @@
+# Git
+.git/
+.github/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Egitim ciktilari ve veri setleri — imaja girmemeli (GB'larca)
+datasets/
+runs/
+outputs/
+
+# Test ve gelistirme
+tests/
+notebooks/
+scripts/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Dokumantasyon (docs/ dahil degil - o uygulamada kullaniliyor)
+CLAUDE.md
+README.md
+requirements-dev.txt
+pyproject.toml
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/

@@ -27,6 +27,7 @@ from src.config import (
     SAMPLES_DIR,
     VIDEO_TYPES,
     custom_models,
+    is_deployed,
 )
 from src.detector import Detector, summarize
 from src.tracker import TrackSession, line_from_ratio
@@ -251,11 +252,24 @@ elif not own_models:
 # --------------------------------------------------------------------------
 
 st.title("🎯 Object Detection")
-st.caption("YOLOv8 ile resim, video ve canli kamera uzerinde nesne tespiti ve takibi.")
 
-tab_image, tab_video, tab_webcam, tab_samples, tab_metrics = st.tabs(
-    ["📷 Resim", "🎬 Video", "📹 Webcam", "🖼️ Ornekler", "📊 Model performansi"]
+# Webcam sunucuda anlamsiz oldugu icin orada sekmeyi hic gostermiyoruz.
+show_webcam = not is_deployed()
+tab_labels = ["📷 Resim", "🎬 Video"]
+if show_webcam:
+    tab_labels.append("📹 Webcam")
+tab_labels += ["🖼️ Ornekler", "📊 Model performansi"]
+
+st.caption(
+    "YOLOv8 ile resim, video ve canli kamera uzerinde nesne tespiti ve takibi."
+    if show_webcam
+    else "YOLOv8 ile resim ve video uzerinde nesne tespiti ve takibi."
 )
+
+tabs = st.tabs(tab_labels)
+tab_image, tab_video = tabs[0], tabs[1]
+tab_webcam = tabs[2] if show_webcam else None
+tab_samples, tab_metrics = tabs[-2], tabs[-1]
 
 # --- Resim ---------------------------------------------------------------
 with tab_image:
@@ -352,69 +366,73 @@ with tab_video:
             source.unlink(missing_ok=True)
 
 # --- Webcam --------------------------------------------------------------
-with tab_webcam:
-    st.write("Bilgisayarin kamerasindan canli tespit.")
-    st.caption(
-        "macOS'ta ilk calistirmada kamera izni istenir. Izin verdikten sonra "
-        "terminali yeniden baslatman gerekebilir."
-    )
+# Sunucuda webcam sekmesi hic olusturulmuyor; blok da calismamali.
+if show_webcam:
+    with tab_webcam:
+        st.write("Bilgisayarin kamerasindan canli tespit.")
+        st.caption(
+            "macOS'ta ilk calistirmada kamera izni istenir. Izin verdikten sonra "
+            "terminali yeniden baslatman gerekebilir."
+        )
 
-    webcam_options = tracking_controls("webcam")
+        webcam_options = tracking_controls("webcam")
 
-    if "webcam_on" not in st.session_state:
-        st.session_state.webcam_on = False
-
-    start, stop = st.columns(2)
-    if start.button("▶️ Baslat", disabled=st.session_state.webcam_on):
-        st.session_state.webcam_on = True
-    if stop.button("⏹️ Durdur", disabled=not st.session_state.webcam_on):
-        st.session_state.webcam_on = False
-
-    frame_slot = st.empty()
-    info_slot = st.empty()
-
-    if st.session_state.webcam_on:
-        capture = cv2.VideoCapture(0)
-        if not capture.isOpened():
+        if "webcam_on" not in st.session_state:
             st.session_state.webcam_on = False
-            st.error("Kamera acilamadi. Baska bir uygulama kullaniyor olabilir.")
-        else:
-            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
-            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
-            live_session = (
-                build_session(
-                    detector,
-                    webcam_options,
-                    conf,
-                    keep_classes,
-                    fps=capture.get(cv2.CAP_PROP_FPS) or 25.0,
-                    size=(width, height),
+
+        start, stop = st.columns(2)
+        if start.button("▶️ Baslat", disabled=st.session_state.webcam_on):
+            st.session_state.webcam_on = True
+        if stop.button("⏹️ Durdur", disabled=not st.session_state.webcam_on):
+            st.session_state.webcam_on = False
+
+        frame_slot = st.empty()
+        info_slot = st.empty()
+
+        if st.session_state.webcam_on:
+            capture = cv2.VideoCapture(0)
+            if not capture.isOpened():
+                st.session_state.webcam_on = False
+                st.error("Kamera acilamadi. Baska bir uygulama kullaniyor olabilir.")
+            else:
+                width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
+                height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
+                live_session = (
+                    build_session(
+                        detector,
+                        webcam_options,
+                        conf,
+                        keep_classes,
+                        fps=capture.get(cv2.CAP_PROP_FPS) or 25.0,
+                        size=(width, height),
+                    )
+                    if webcam_options["enabled"]
+                    else None
                 )
-                if webcam_options["enabled"]
-                else None
-            )
 
-            try:
-                # Durdur'a basilinca Streamlit script'i bastan calistirir ve
-                # bu dongu kendiliginden kesilir.
-                while st.session_state.webcam_on:
-                    ok, frame = capture.read()
-                    if not ok:
-                        st.warning("Kameradan goruntu alinamadi.")
-                        break
+                try:
+                    # Durdur'a basilinca Streamlit script'i bastan calistirir ve
+                    # bu dongu kendiliginden kesilir.
+                    while st.session_state.webcam_on:
+                        ok, frame = capture.read()
+                        if not ok:
+                            st.warning("Kameradan goruntu alinamadi.")
+                            break
 
-                    if live_session is not None:
-                        annotated, _ = live_session.step(frame)
-                        text = as_counts(live_session.unique_counts())
-                        text = f"Toplam farkli nesne — {text}" if text else "Nesne yok."
-                    else:
-                        annotated, detections = detector.detect(frame, conf, keep_classes)
-                        text = as_counts(summarize(detections)) or "Goruntude nesne yok."
+                        if live_session is not None:
+                            annotated, _ = live_session.step(frame)
+                            text = as_counts(live_session.unique_counts())
+                            text = f"Toplam farkli nesne — {text}" if text else "Nesne yok."
+                        else:
+                            annotated, detections = detector.detect(frame, conf, keep_classes)
+                            text = as_counts(summarize(detections)) or "Goruntude nesne yok."
 
-                    frame_slot.image(to_rgb(annotated), channels="RGB", use_container_width=True)
-                    info_slot.write(text)
-            finally:
-                capture.release()
+                        frame_slot.image(
+                            to_rgb(annotated), channels="RGB", use_container_width=True
+                        )
+                        info_slot.write(text)
+                finally:
+                    capture.release()
 
 # --- Ornekler ------------------------------------------------------------
 with tab_samples:
