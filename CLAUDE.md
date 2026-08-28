@@ -40,6 +40,7 @@ python scripts/download_samples.py   # örnek görselleri indir
 python scripts/train.py --epochs 30  # fine-tune (models/<isim>.pt üretir)
 python scripts/evaluate.py           # metrikler → docs/metrics.{json,md} + docs/plots/
 python scripts/compare.py            # önce/sonra görselleri → docs/comparison/
+python scripts/screenshot.py         # README ekran görüntüleri → docs/screenshots/
 
 pytest                               # tüm testler
 pytest -m "not slow"                 # hızlı olanlar (CI'ın koştuğu)
@@ -81,6 +82,10 @@ docker compose up --build            # konteynerde çalıştır
 - **`models/african-wildlife.pt` bilerek git'e dahil (5.9 MB).** `.gitignore`'da
   `*.pt` kuralına özel bir istisna var. Repoyu klonlayan biri 31 dakika eğitim
   beklemeden "Özel:" modelini deneyebilsin diye.
+- **Ekran görüntüleri script'le alınıyor, elle değil.** `scripts/screenshot.py`
+  playwright ile uygulamayı başlatıp gezerek `docs/screenshots/` altına yazıyor.
+  Arayüz değiştikçe tek komutla yenilenebilsin diye. JPEG kullanılıyor: içerik
+  ağırlıklı olarak fotoğraf, PNG gereksiz şişiyor (1.4 MB → 576 KB).
 - **Metrikler ve grafikler `docs/` altında commit'leniyor.** `runs/` git'e
   girmiyor; `evaluate.py` gösterilmeye değer grafikleri `docs/plots/`'a
   kopyalıyor. README ve Streamlit sekmesi aynı dosyaları okuyor.
@@ -358,5 +363,6 @@ gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
 - `streamlit.testing` ile arayüz testleri.
 - Codecov entegrasyonu ve kapsam rozeti.
 - Demoda video boyutu/süresi sınırı (ücretsiz CPU'yu korumak için).
-- Ekran görüntüsü / demo GIF — README'de hâlâ yer tutucu duruyor.
+- Demo GIF — takip modunu hareketli göstermek en etkileyicisi olur;
+  şimdilik sadece durağan ekran görüntüleri var.
 - Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.
