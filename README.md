@@ -6,9 +6,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
+[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc/object-detection)
 
-> 🚀 *Live demo: create your Hugging Face Space, then put the link here —
-> `./deploy/push_to_hf.sh <your-username>/<space-name>`*
+> 🚀 **[Try the live demo](https://huggingface.co/spaces/knkrc/object-detection)** — running on Hugging Face Spaces.
 
 A Streamlit app for **object detection and tracking** on images, video and a live
 camera, built on YOLOv8. The pretrained COCO model recognises **80 object classes** —
