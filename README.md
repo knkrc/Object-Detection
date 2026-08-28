@@ -206,9 +206,9 @@ docker build -t object-detection .
 docker run -p 8501:8501 object-detection
 ```
 
-İmaj kendi kendine yeter: model ağırlıkları (hazır YOLOv8n + eğittiğimiz
-African Wildlife modeli), örnek görseller ve metrikler gömülü geliyor, ilk
-açılışta hiçbir şey indirilmiyor. torch CPU deposundan kuruluyor — PyPI sürümü
+İmaj (~2.2 GB) kendi kendine yeter: model ağırlıkları (hazır YOLOv8n +
+eğittiğimiz African Wildlife modeli), örnek görseller ve metrikler gömülü
+geliyor, ilk açılışta hiçbir şey indirilmiyor. torch CPU deposundan kuruluyor — PyPI sürümü
 Linux'ta CUDA paketlerini de çekiyor (~2.5 GB).
 
 Konteyner root olmayan bir kullanıcı (uid 1000) altında çalışıyor; bu hem iyi

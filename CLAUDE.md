@@ -317,7 +317,8 @@ kısımları yalnızca `slow` testlerde.
 - Yerel mod: 5 sekme, webcam var, alt başlıkta "canlı kamera" geçiyor.
 - Sunucu modu (`DEPLOYED=1`): 4 sekme, webcam yok, alt başlık da değişiyor.
 - Docker imajı **bu makinede test edilemedi** (docker kurulu değil); build ve
-  smoke testi CI'da yapılıyor.
+  smoke testi CI'da yapılıyor ve geçiyor: imaj derleniyor (~170 sn), konteyner
+  ayağa kalkıyor, sağlık kontrolü yanıt veriyor, sunucu modu aktif.
 
 **Yol boyunca düzeltilen**
 - Webcam bloğunu ilk denemede `with tab_webcam if show_webcam else nullcontext():`
@@ -330,8 +331,9 @@ kısımları yalnızca `slow` testlerde.
   gerekiyor. Script ve yapılandırma hazır, README'de link için yer bırakıldı.
 - Ücretsiz katmanda CPU ile video işleme yavaş olacak; uzun videolarda kullanıcı
   beklemek zorunda. İstenirse arayüze bir süre/boyut sınırı konabilir.
-- İmaj boyutu ölçülmedi (yerelde build edilemedi); torch + ultralytics ile
-  muhtemelen 2-3 GB civarı.
+- İmaj **2.16 GB** (CI'da ölçüldü). Çoğu torch + ultralytics. Küçültmek için
+  `opencv-python-headless`'a geçilebilir (o zaman `libgl1` de gerekmez) veya
+  multi-stage build denenebilir; şimdilik değmez.
 - `docker-compose.yml` içinde `DEPLOYED=1` sabit. Konteynerde webcam zaten
   çalışmayacağı için doğru, ama Linux'ta `--device /dev/video0` ile denenebilir.
 
