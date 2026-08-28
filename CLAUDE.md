@@ -121,6 +121,10 @@ docker compose up --build            # konteynerde çalıştır
 ## Kod kuralları
 
 - Yorumlar Türkçe, kod/değişken isimleri İngilizce.
+- **İki README var:** `README.md` İngilizce (birincil, uluslararası başvurular
+  için), `README.tr.md` Türkçe. İkisi de karşılıklı link veriyor. Bir şey
+  değişince **ikisini birden** güncelle — özellikle test sayısı, kapsam yüzdesi
+  ve metrikler gibi sayılar.
 - Docstring'ler *ne yaptığını* değil *neden öyle yaptığını* anlatsın.
 - Yeni bir özellik `src/` altında kendi modülüne; `app.py` sadece arayüz olsun.
 - Bağımlılık eklerken hem `requirements.txt` (gevşek) hem
@@ -362,7 +366,10 @@ gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
 - Isı haritası / yoğunluk görselleştirmesi.
 - Tespit sonuçlarını JSON olarak dışa aktarma (takip CSV'si M2'de eklendi).
 - BoT-SORT seçeneği: uzun süre kaybolan nesneyi re-ID ile hatırlar.
-- İngilizce README (uluslararası başvurular için).
+- Arayüz metinlerini İngilizceye çevirmek — README İngilizce ama uygulama,
+  ekran görüntüleri ve GIF hâlâ Türkçe. Kullanıcıya görünen metinler `app.py`'de
+  toplu duruyor; çevirirsek ekran görüntüleri ve GIF'in de yenilenmesi gerekir
+  (iki script'le tek komut).
 - Kendi topladığın görsellerle ikinci bir veri seti (M3 altyapısı hazır).
 - Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
 - `streamlit.testing` ile arayüz testleri.
