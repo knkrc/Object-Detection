@@ -1,0 +1,4 @@
+# apt packages the Space installs before pip. opencv needs these on a headless
+# Linux box; the Dockerfile installs the same two.
+libgl1
+libglib2.0-0

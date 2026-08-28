@@ -6,9 +6,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
-[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc/object-detection)
+[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc26/object-detection)
 
-> 🚀 **[Try the live demo](https://huggingface.co/spaces/knkrc/object-detection)** — running on Hugging Face Spaces.
+> 🚀 **[Try the live demo](https://huggingface.co/spaces/knkrc26/object-detection)** — running on Hugging Face Spaces.
 
 A Streamlit app for **object detection and tracking** on images, video and a live
 camera, built on YOLOv8. The pretrained COCO model recognises **80 object classes** —
@@ -238,8 +238,9 @@ a Hugging Face Spaces requirement.
 
 To push to Hugging Face Spaces:
 
-1. Create an account at [huggingface.co](https://huggingface.co) and a new Space
-   with the **Docker** SDK
+1. Create an account at [huggingface.co](https://huggingface.co) and a new Space.
+   Pick any SDK on the form — `deploy/space-README.md` sets it to `streamlit`,
+   which is what the app needs. (HF only offers Docker Spaces on a paid plan.)
 2. Generate a [token with write access](https://huggingface.co/settings/tokens)
 3. Push:
 
@@ -251,6 +252,13 @@ export HF_TOKEN=hf_...
 The script clones the Space, copies only what the app needs to run (training
 scripts, tests and datasets are left out), takes the Space's own README from
 [`deploy/space-README.md`](deploy/space-README.md) and pushes.
+
+The Space runs on the **Streamlit SDK**, so the Dockerfile is not pushed — HF
+installs [`deploy/space-requirements.txt`](deploy/space-requirements.txt) and
+[`deploy/space-packages.txt`](deploy/space-packages.txt) and runs `app.py`
+itself. That requirements file pins the `+cpu` torch build: on Linux the PyPI
+wheel drags in CUDA packages a free Space cannot afford. The Dockerfile is still
+what you want for running locally or self-hosting.
 
 ### Why there is no webcam tab on the server
 

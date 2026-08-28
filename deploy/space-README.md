@@ -3,8 +3,8 @@ title: Object Detection
 emoji: 🎯
 colorFrom: blue
 colorTo: green
-sdk: docker
-app_port: 8501
+sdk: streamlit
+app_file: app.py
 pinned: false
 license: mit
 ---

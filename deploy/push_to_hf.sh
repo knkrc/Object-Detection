@@ -11,6 +11,11 @@
 #
 # The Space is not a copy of this repo: only the files the app needs to run are
 # pushed (training scripts, tests and datasets are left out).
+#
+# The Space runs on the Streamlit SDK, not Docker — HF only offers Docker Spaces
+# on a paid plan. So the Dockerfile is not pushed; HF installs
+# space-requirements.txt and space-packages.txt and runs app.py itself. The
+# Dockerfile still works for running the app locally or self-hosting.
 
 set -euo pipefail
 
@@ -38,10 +43,14 @@ cd "$WORK/space"
 # Clear out whatever the previous version left behind (except .git)
 find . -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
 
-cp "$ROOT/Dockerfile" "$ROOT/requirements.txt" "$ROOT/app.py" .
+cp "$ROOT/app.py" .
 cp -r "$ROOT/src" "$ROOT/models" "$ROOT/samples" "$ROOT/docs" .
+
 # The Space's own README: HF reads its configuration from the frontmatter
 cp "$ROOT/deploy/space-README.md" README.md
+# Space-specific dependency files (CPU torch, apt packages for opencv)
+cp "$ROOT/deploy/space-requirements.txt" requirements.txt
+cp "$ROOT/deploy/space-packages.txt" packages.txt
 
 # The app reads docs/metrics.json, docs/comparison and docs/plots for its
 # performance tab. The demo GIF and screenshots are README-only, so drop them
