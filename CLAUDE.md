@@ -41,6 +41,7 @@ python scripts/train.py --epochs 30  # fine-tune (models/<isim>.pt üretir)
 python scripts/evaluate.py           # metrikler → docs/metrics.{json,md} + docs/plots/
 python scripts/compare.py            # önce/sonra görselleri → docs/comparison/
 python scripts/screenshot.py         # README ekran görüntüleri → docs/screenshots/
+python scripts/make_demo_gif.py      # README demo GIF'i → docs/demo.gif (ffmpeg gerekir)
 
 pytest                               # tüm testler
 pytest -m "not slow"                 # hızlı olanlar (CI'ın koştuğu)
@@ -82,6 +83,10 @@ docker compose up --build            # konteynerde çalıştır
 - **`models/african-wildlife.pt` bilerek git'e dahil (5.9 MB).** `.gitignore`'da
   `*.pt` kuralına özel bir istisna var. Repoyu klonlayan biri 31 dakika eğitim
   beklemeden "Özel:" modelini deneyebilsin diye.
+- **Demo GIF'i de script'le.** `scripts/make_demo_gif.py` playwright'ın video
+  kaydıyla arayüz turunu çekiyor, ffmpeg iki geçişli palet yöntemiyle GIF'e
+  çeviriyor (tek geçiş 256 renk sınırında berbat görünüyor). Ortak "uygulamayı
+  başlat / sekmede gez" mantığı `scripts/_preview.py`'ye alındı.
 - **Ekran görüntüleri script'le alınıyor, elle değil.** `scripts/screenshot.py`
   playwright ile uygulamayı başlatıp gezerek `docs/screenshots/` altına yazıyor.
   Arayüz değiştikçe tek komutla yenilenebilsin diye. JPEG kullanılıyor: içerik
@@ -363,6 +368,8 @@ gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
 - `streamlit.testing` ile arayüz testleri.
 - Codecov entegrasyonu ve kapsam rozeti.
 - Demoda video boyutu/süresi sınırı (ücretsiz CPU'yu korumak için).
-- Demo GIF — takip modunu hareketli göstermek en etkileyicisi olur;
-  şimdilik sadece durağan ekran görüntüleri var.
+- Takip modunun hareketli demosu — arayüz turu GIF'i var ama takip modu
+  içinde yok. Ultralytics'in örnek videolarının hepsi ya kendi demo çıktıları
+  (üzerinde başkasının kutuları basılı) ya da 1 saniyeden kısa. Telifsiz bir
+  stok video ya da Kaan'ın kendi çektiği görüntü gerekiyor.
 - Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.

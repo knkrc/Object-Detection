@@ -12,7 +12,10 @@ YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** y
 COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
 Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı araba geçti" sorusunu cevaplar.
 
-![Uygulama](docs/screenshots/tespit.jpg)
+![Demo](docs/demo.gif)
+
+*Örnek görselde tespit → sınıf filtresi (otobüs kutusu kayboluyor) → kendi
+eğittiğimiz modele geçiş → model performansı ve önce/sonra karşılaştırması.*
 
 ---
 
@@ -28,6 +31,8 @@ Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı 
 | 🧠 **Kendi modelin** | Fine-tune edilmiş model, arayüzde "Özel:" olarak seçilebilir |
 | 📊 **Performans** | mAP tablosu, eğitim grafikleri, önce/sonra karşılaştırması |
 | ⚙️ **Ayarlar** | Model boyutu (n/s/m), güven eşiği ve sınıf filtresi |
+
+![Tespit sonucu](docs/screenshots/tespit.jpg)
 
 ### Takip modu neler veriyor?
 
@@ -139,7 +144,8 @@ Object-Detection/
 │   ├── train.py                # fine-tune
 │   ├── evaluate.py             # metrikler → docs/
 │   ├── compare.py              # önce/sonra görselleri
-│   └── screenshot.py           # README ekran görüntüleri
+│   ├── screenshot.py           # README ekran görüntüleri
+│   └── make_demo_gif.py        # README demo GIF'i
 ├── notebooks/
 │   └── train_colab.ipynb       # GPU'da eğitim
 ├── tests/                      # pytest paketi (hızlı + slow ayrımı)
