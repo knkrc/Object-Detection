@@ -23,7 +23,7 @@ htmlcov/
 
 # Dokumantasyon (docs/ dahil degil - o uygulamada kullaniliyor)
 CLAUDE.md
-README.md
+README*.md
 requirements-dev.txt
 pyproject.toml
 

@@ -1,50 +1,58 @@
 # 🎯 Object Detection
 
+*[Türkçe README](README.tr.md)*
+
 [![CI](https://github.com/knkrc/Object-Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/knkrc/Object-Detection/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
 
-> 🚀 *Canlı demo: Hugging Face Space'ini açtıktan sonra linkini buraya ekle —
-> `./deploy/push_to_hf.sh <kullanıcı-adın>/<space-adı>`*
+> 🚀 *Live demo: create your Hugging Face Space, then put the link here —
+> `./deploy/push_to_hf.sh <your-username>/<space-name>`*
 
-YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
-COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
-Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı araba geçti" sorusunu cevaplar.
+A Streamlit app for **object detection and tracking** on images, video and a live
+camera, built on YOLOv8. The pretrained COCO model recognises **80 object classes** —
+people, cars, dogs, handbags and so on. Tracking mode assigns each object a
+persistent ID, which answers the question detection alone cannot: *how many
+distinct cars passed through this video?*
 
 ![Demo](docs/demo.gif)
 
-*Örnek görselde tespit → sınıf filtresi (otobüs kutusu kayboluyor) → kendi
-eğittiğimiz modele geçiş → model performansı ve önce/sonra karşılaştırması.*
+*Detection on a sample image → filtering to one class (the bus box disappears) →
+switching to our fine-tuned model → metrics and a before/after comparison.*
+
+> The interface is in Turkish. See [Notes](#notes) if you would like it in English.
 
 ---
 
-## Neler yapabiliyor?
+## What it does
 
-| Özellik | Açıklama |
+| Feature | Description |
 |---|---|
-| 📷 **Resim** | JPG/PNG yükle, tespit edilen nesneleri kutularla gör, sonucu indir |
-| 🎬 **Video** | MP4 yükle, kare kare işle, işlenmiş videoyu indir |
-| 📹 **Webcam** | Bilgisayar kamerasından canlı tespit |
-| 🖼️ **Örnekler** | Repoda hazır gelen görsellerle tek tıkla dene |
-| 🎯 **Takip** | ByteTrack ile kalıcı ID, benzersiz sayım, çizgi geçişi, hareket izi |
-| 🧠 **Kendi modelin** | Fine-tune edilmiş model, arayüzde "Özel:" olarak seçilebilir |
-| 📊 **Performans** | mAP tablosu, eğitim grafikleri, önce/sonra karşılaştırması |
-| ⚙️ **Ayarlar** | Model boyutu (n/s/m), güven eşiği ve sınıf filtresi |
+| 📷 **Image** | Upload a JPG/PNG, see detections drawn as boxes, download the result |
+| 🎬 **Video** | Upload an MP4, process it frame by frame, download the annotated video |
+| 📹 **Webcam** | Live detection from your computer's camera |
+| 🖼️ **Samples** | Try it in one click with images shipped in the repo |
+| 🎯 **Tracking** | ByteTrack: persistent IDs, unique counts, line crossings, motion trails |
+| 🧠 **Your own model** | A fine-tuned model, selectable in the sidebar under "Özel:" |
+| 📊 **Performance** | mAP tables, training curves, before/after comparison |
+| ⚙️ **Settings** | Model size (n/s/m), confidence threshold, class filter |
 
-![Tespit sonucu](docs/screenshots/tespit.jpg)
+![Detection result](docs/screenshots/tespit.jpg)
 
-### Takip modu neler veriyor?
+### What tracking mode adds
 
-Video ve Webcam sekmelerindeki **Takip modu** anahtarı açıldığında:
+Turning on **tracking mode** in the Video and Webcam tabs gives you:
 
-- **Benzersiz sayım** — aynı nesneyi iki kez saymadan "3 farklı insan, 1 otobüs"
-- **Çizgi geçiş sayımı** — ekrana sanal bir çizgi koy, geçenleri yönüyle say
-  (yatay çizgide `aşağı`/`yukarı`, dikey çizgide `sağa`/`sola`)
-- **Hareket izi** — her nesnenin son N karedeki yolu, ID'ye özel renkte
-- **Nesne başına süre** — hangi ID kaç saniye ekranda kaldı; CSV olarak indirilebilir
+- **Unique counts** — "3 people, 1 bus", without counting the same object twice
+- **Line crossing counts** — drop a virtual line on the frame and count what
+  crosses it, with direction (`down`/`up` for a horizontal line, `right`/`left`
+  for a vertical one)
+- **Motion trails** — each object's path over the last N frames, in a colour
+  derived from its ID
+- **Time on screen** — how long each ID stayed visible, downloadable as CSV
 
-## Kurulum
+## Installation
 
 ```bash
 git clone <repo-url>
@@ -54,160 +62,163 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python scripts/download_samples.py   # örnek görselleri indir (opsiyonel)
+python scripts/download_samples.py   # fetch the sample images (optional)
 ```
 
-## Çalıştırma
+## Running it
 
 ```bash
 streamlit run app.py
 ```
 
-Tarayıcıda `http://localhost:8501` açılır. İlk çalıştırmada model ağırlığı (~6 MB)
-otomatik olarak indirilip `models/` klasörüne kaydedilir.
+This opens `http://localhost:8501`. On the first run the model weights (~6 MB)
+are downloaded automatically and stored in `models/`.
 
 ---
 
-## Kendi modelimiz — African Wildlife
+## Our own model — African Wildlife
 
-Hazır COCO modeli 80 sınıf tanıyor ama bufalo ile gergedanı bilmiyor: gergedana
-"inek", bufaloya "inek" diyor. Aynı modeli 1500 görsellik bir veri setiyle
-fine-tune ederek 4 Afrika hayvanını tanıyan bir model eğittik.
+The pretrained COCO model knows 80 classes, but buffalo and rhino are not among
+them: it calls a rhino a "cow", and a buffalo a "cow" too. We fine-tuned that
+same model on a 1,500-image dataset to recognise four African animals.
 
-![Önce / sonra](docs/comparison/rhino.jpg)
+![Before / after](docs/comparison/rhino.jpg)
 
-*Solda hazır COCO modeli (`cow 0.56` + hayalet bir `horse`), sağda kendi modelimiz (`rhino 0.97`).*
+*Left: the pretrained COCO model (`cow 0.56`, plus a phantom `horse`).
+Right: our model (`rhino 0.97`).*
 
-### Sonuçlar
+### Results
 
-YOLOv8n, 30 epoch, 640px — MacBook'ta MPS ile **31 dakika**. Doğrulama seti: 225 görsel, 379 nesne.
+YOLOv8n, 30 epochs, 640px — **31 minutes** on a MacBook using MPS.
+Validation set: 225 images, 379 instances.
 
-| Metrik | Değer |
+| Metric | Value |
 |---|---|
 | **mAP50** | **0.957** |
 | mAP50-95 | 0.791 |
 | Precision | 0.954 |
 | Recall | 0.895 |
 
-| Sınıf | mAP50 | mAP50-95 | Precision | Recall |
+| Class | mAP50 | mAP50-95 | Precision | Recall |
 |---|---|---|---|---|
 | buffalo | 0.970 | 0.817 | 1.000 | 0.879 |
 | elephant | 0.927 | 0.741 | 0.859 | 0.879 |
 | rhino | 0.972 | 0.856 | 0.976 | 0.937 |
 | zebra | 0.958 | 0.749 | 0.981 | 0.884 |
 
-Metrikler ve önce/sonra karşılaştırması uygulamanın içinde de duruyor:
+The metrics and the before/after comparison also live inside the app:
 
-![Model performansı sekmesi](docs/screenshots/model-performansi.jpg)
+![Model performance tab](docs/screenshots/model-performansi.jpg)
 
 <details>
-<summary>Eğitim grafikleri</summary>
+<summary>Training curves</summary>
 
-![Eğitim eğrileri](docs/plots/results.png)
+![Training curves](docs/plots/results.png)
 ![Confusion matrix](docs/plots/confusion_matrix_normalized.png)
 
 </details>
 
-Eğitilmiş model repoda (`models/african-wildlife.pt`, 5.9 MB) — klonlayıp
-arayüzde **"Özel: african-wildlife"** seçerek hemen deneyebilirsin.
+The trained model is committed to the repo (`models/african-wildlife.pt`, 5.9 MB) —
+clone it and pick **"Özel: african-wildlife"** in the sidebar to try it right away.
 
-### Kendin eğitmek istersen
-
-```bash
-python scripts/train.py --epochs 30        # eğit (models/<isim>.pt olarak kaydeder)
-python scripts/evaluate.py                 # ölç, docs/metrics.* üret
-python scripts/compare.py                  # önce/sonra görselleri üret
-```
-
-Kendi veri setinle:
+### Training your own
 
 ```bash
-python scripts/train.py --data yol/data.yaml --model yolov8s.pt --epochs 50
+python scripts/train.py --epochs 30        # train (saves to models/<name>.pt)
+python scripts/evaluate.py                 # measure, write docs/metrics.*
+python scripts/compare.py                  # generate before/after images
 ```
 
-GPU'da eğitmek için [`notebooks/train_colab.ipynb`](notebooks/train_colab.ipynb) —
-Colab'ın ücretsiz T4'ünde aynı eğitim dakikalar sürer. İnen `best.pt` dosyasını
-`models/` klasörüne koyman yeterli; arayüz onu otomatik bulur.
+With your own dataset:
 
-## Proje yapısı
+```bash
+python scripts/train.py --data path/to/data.yaml --model yolov8s.pt --epochs 50
+```
+
+To train on a GPU, use [`notebooks/train_colab.ipynb`](notebooks/train_colab.ipynb) —
+the same run takes minutes on Colab's free T4. Drop the resulting `best.pt` into
+`models/` and the app will pick it up on its own.
+
+## Project layout
 
 ```
 Object-Detection/
-├── app.py                      # Streamlit arayüzü (tüm sekmeler)
+├── app.py                      # Streamlit UI (all tabs)
 ├── src/
-│   ├── config.py               # yollar, model listesi, varsayılan ayarlar
-│   ├── detector.py             # YOLO sarmalayıcı — detect() burada
-│   ├── tracker.py              # takip oturumu, çizgi sayacı, izler
-│   └── video.py                # video dosyasını kare kare işleme
+│   ├── config.py               # paths, model list, defaults
+│   ├── detector.py             # YOLO wrapper — detect() lives here
+│   ├── tracker.py              # tracking session, line counter, trails
+│   └── video.py                # frame-by-frame video processing
 ├── scripts/
-│   ├── download_samples.py     # örnek görselleri indirir
-│   ├── train.py                # fine-tune
-│   ├── evaluate.py             # metrikler → docs/
-│   ├── compare.py              # önce/sonra görselleri
-│   ├── screenshot.py           # README ekran görüntüleri
-│   └── make_demo_gif.py        # README demo GIF'i
+│   ├── download_samples.py     # fetch sample images
+│   ├── train.py                # fine-tuning
+│   ├── evaluate.py             # metrics → docs/
+│   ├── compare.py              # before/after images
+│   ├── screenshot.py           # README screenshots
+│   └── make_demo_gif.py        # README demo GIF
 ├── notebooks/
-│   └── train_colab.ipynb       # GPU'da eğitim
-├── tests/                      # pytest paketi (hızlı + slow ayrımı)
-├── deploy/                     # HF Spaces README'si ve push scripti
+│   └── train_colab.ipynb       # training on a GPU
+├── tests/                      # pytest suite (fast / slow split)
+├── deploy/                     # HF Spaces README and push script
 ├── Dockerfile, docker-compose.yml
-├── docs/                       # metrikler, grafikler, karşılaştırmalar
-├── samples/                    # örnek görseller
-├── models/                     # ağırlıklar (kendi modelimiz hariç git'e girmez)
-├── datasets/, runs/            # veri seti ve eğitim çıktıları (git'e girmez)
-├── outputs/                    # işlenmiş videolar (git'e girmez)
-├── requirements.txt            # + requirements-dev.txt (pytest, ruff)
-├── pyproject.toml              # pytest ve ruff yapılandırması
-└── CLAUDE.md                   # geliştirme günlüğü / yol haritası
+├── docs/                       # metrics, plots, comparisons
+├── samples/                    # sample images
+├── models/                     # weights (gitignored, except our own model)
+├── datasets/, runs/            # datasets and training output (gitignored)
+├── outputs/                    # processed videos (gitignored)
+├── requirements.txt            # plus requirements-dev.txt (pytest, ruff)
+├── pyproject.toml              # pytest and ruff configuration
+└── CLAUDE.md                   # development log / roadmap
 ```
 
-## Nasıl çalışıyor?
+## How it works
 
-1. `Detector` sınıfı ultralytics'in `YOLO` modelini yükler ve bellekte tutar
-   (Streamlit'te `@st.cache_resource` ile bir kez yüklenir).
-2. Yüklenen resim OpenCV ile BGR bir numpy dizisine çevrilir.
-3. Model çıktısı hem çizilmiş görsel hem de `Detection(label, confidence, box)`
-   listesi olarak döner — arayüz ikisini de kullanır.
-4. Videoda her kare aynı yoldan geçer; "kare atlama" ayarı ile hız/doğruluk
-   dengesi kurulabilir. `process_video` işin ne olduğunu bilmez — kendisine
-   verilen `on_frame` fonksiyonunu çağırır, böylece aynı döngü hem tespit hem
-   takip için kullanılır.
-5. Takipte `TrackSession` bir oturumun durumunu (ID'ler, izler, sayaçlar) tutar.
-   Çizgi geçişi, nesne merkezinin çizgiye göre hangi tarafta olduğunun
-   (vektörel çarpımın işareti) kareler arasında değişmesiyle tespit edilir.
+1. The `Detector` class loads ultralytics' `YOLO` model and keeps it in memory
+   (Streamlit loads it once via `@st.cache_resource`).
+2. The uploaded image is decoded with OpenCV into a BGR numpy array.
+3. Model output comes back as both an annotated image and a list of
+   `Detection(label, confidence, box)` — the UI uses both.
+4. Every video frame goes through the same path, with a "frame skip" setting to
+   trade accuracy for speed. `process_video` does not know what work is being
+   done: it calls the `on_frame` function it was handed, so the same loop serves
+   both detection and tracking.
+5. In tracking, `TrackSession` holds one session's state (IDs, trails, counters).
+   A line crossing is detected when the sign of the cross product — which side of
+   the line the object's centre is on — flips between frames.
 
 ---
 
-## Testler
+## Tests
 
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                    # hepsi (55 test)
-pytest -m "not slow"      # sadece hızlı olanlar — model gerektirmez, ~1 sn
-pytest -m slow            # gerçek modeli indirip çalıştıranlar
+pytest                    # everything (65 tests)
+pytest -m "not slow"      # fast ones only — no model needed, ~1 s
+pytest -m slow            # the ones that download and run the real model
 ```
 
-Testler iki gruba ayrılıyor. Hızlı olanlar sahte bir model katmanı kullanıyor
-(`tests/conftest.py`), böylece takip mantığı — sayım, süre, iz, çizgi geçişi —
-torch'a hiç dokunmadan milisaniyeler içinde test edilebiliyor. `slow` işaretli
-olanlar gerçek ağırlıkları indirip çalıştırıyor ve CI'da atlanıyor.
+Tests come in two groups. The fast ones use a fake model layer
+(`tests/conftest.py`), so the tracking logic — counting, durations, trails, line
+crossings — can be tested in milliseconds without touching torch. The ones marked
+`slow` run the real weights and are skipped in CI.
 
-`src/` kapsamı hızlı testlerle **%91** (`tracker` %98, `video` %95). `detector`
-düşük görünüyor çünkü model gerektiren kısımları yalnızca `slow` testler kapsıyor.
+Coverage of `src/` from the fast tests alone is **93%** (`tracker` 98%, `video` 95%,
+`config` 100%). `detector` sits lower because its model-dependent parts are only
+exercised by the `slow` tests.
 
-**CI** her push ve PR'da çalışıyor: ruff (lint + format) ve Python 3.11 / 3.12 / 3.13
-üzerinde hızlı test paketi. Bkz. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+**CI** runs on every push and pull request: ruff (lint + format) and the fast test
+suite on Python 3.11 / 3.12 / 3.13. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ---
 
-## Docker ile çalıştırma
+## Running with Docker
 
 ```bash
 docker compose up --build
 ```
 
-Sonra `http://localhost:8501`. Ya da doğrudan:
+Then open `http://localhost:8501`. Or directly:
 
 ```bash
 docker build -t object-detection .
@@ -217,59 +228,62 @@ docker build -t object-detection .
 docker run -p 8501:8501 object-detection
 ```
 
-İmaj (~2.2 GB) kendi kendine yeter: model ağırlıkları (hazır YOLOv8n +
-eğittiğimiz African Wildlife modeli), örnek görseller ve metrikler gömülü
-geliyor, ilk açılışta hiçbir şey indirilmiyor. torch CPU deposundan kuruluyor — PyPI sürümü
-Linux'ta CUDA paketlerini de çekiyor (~2.5 GB).
+The image (~2.2 GB) is self-contained: model weights (pretrained YOLOv8n plus our
+African Wildlife model), sample images and metrics are all baked in, so nothing is
+downloaded on first start. torch is installed from the CPU index — the PyPI build
+pulls CUDA packages on Linux (~2.5 GB).
 
-Konteyner root olmayan bir kullanıcı (uid 1000) altında çalışıyor; bu hem iyi
-bir pratik hem de Hugging Face Spaces'in gereği.
+The container runs as a non-root user (uid 1000), which is both good practice and
+a Hugging Face Spaces requirement.
 
-## Canlı demo yayınlama
+## Publishing a live demo
 
-Hugging Face Spaces'e göndermek için:
+To push to Hugging Face Spaces:
 
-1. [huggingface.co](https://huggingface.co)'da hesap aç ve **Docker** SDK'sıyla
-   bir Space oluştur
-2. [Write yetkili bir token](https://huggingface.co/settings/tokens) üret
-3. Gönder:
+1. Create an account at [huggingface.co](https://huggingface.co) and a new Space
+   with the **Docker** SDK
+2. Generate a [token with write access](https://huggingface.co/settings/tokens)
+3. Push:
 
 ```bash
 export HF_TOKEN=hf_...
-./deploy/push_to_hf.sh <kullanıcı-adın>/<space-adı>
+./deploy/push_to_hf.sh <your-username>/<space-name>
 ```
 
-Script Space'i klonluyor, uygulamanın çalışması için gereken dosyaları kopyalıyor
-(eğitim scriptleri, testler ve veri setleri gitmiyor), Space'in kendi README'sini
-[`deploy/space-README.md`](deploy/space-README.md)'den alıp push ediyor.
+The script clones the Space, copies only what the app needs to run (training
+scripts, tests and datasets are left out), takes the Space's own README from
+[`deploy/space-README.md`](deploy/space-README.md) and pushes.
 
-### Sunucuda webcam neden yok?
+### Why there is no webcam tab on the server
 
-Webcam sekmesi `cv2.VideoCapture(0)` ile **uygulamanın çalıştığı makinenin**
-kamerasını açıyor. Yerelde bu senin kameran; sunucuda ise ziyaretçinin değil
-sunucunun kamerası olurdu — yani işe yaramaz. Bu yüzden `DEPLOYED=1` (veya HF'in
-eklediği `SPACE_ID`) varken o sekme hiç oluşturulmuyor. Yerelde çalışmaya
-devam ediyor.
+The webcam tab uses `cv2.VideoCapture(0)`, which opens the camera of **whichever
+machine the app is running on**. Locally that is your camera; on a server it would
+be the server's camera rather than the visitor's — useless either way. So when
+`DEPLOYED=1` (or HF's own `SPACE_ID`) is set, that tab is never created. It keeps
+working locally.
 
-## Yol haritası
+## Roadmap
 
-- [x] **M1** — Resim, video, webcam ve örneklerle çalışan temel uygulama
-- [x] **M2** — Nesne takibi: ByteTrack, benzersiz sayım, çizgi geçişi, hareket izi
-- [x] **M3** — Kendi veri setiyle fine-tune: African Wildlife, mAP50 0.957
-- [x] **M4** — Testler (55 test, %91 kapsam) + GitHub Actions CI
-- [x] **M5** — Docker imajı + Hugging Face Spaces deploy hattı
+- [x] **M1** — Working app with image, video, webcam and sample tabs
+- [x] **M2** — Object tracking: ByteTrack, unique counts, line crossings, trails
+- [x] **M3** — Fine-tuning on a custom dataset: African Wildlife, mAP50 0.957
+- [x] **M4** — Tests (65 tests, 93% coverage) + GitHub Actions CI
+- [x] **M5** — Docker image + Hugging Face Spaces deployment pipeline
 
-Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).
+See [CLAUDE.md](CLAUDE.md) for details and notes from each milestone.
 
-## Notlar
+## Notes
 
-- CPU'da çalışır; GPU varsa ultralytics otomatik kullanır.
-- Takip için `lap` paketi gerekir (`requirements.txt`'de var); eksikse
-  ultralytics kurulumu kendi başlatmaya çalışır ama yeniden başlatma ister.
-- Webcam sekmesi macOS'ta kamera izni ister; izin verdikten sonra terminali
-  yeniden başlatman gerekebilir.
-- Örnek görseller [Ultralytics](https://ultralytics.com)'in herkese açık demo görselleridir.
+- Runs on CPU; ultralytics uses a GPU automatically if one is available.
+- Tracking needs the `lap` package (it is in `requirements.txt`); without it
+  ultralytics tries to install it itself but then asks for a restart.
+- The webcam tab asks for camera permission on macOS; you may need to restart your
+  terminal after granting it.
+- **The app's interface, code comments and `CLAUDE.md` are in Turkish.** Only this
+  README is in English. Translating the UI is a small change if you need it —
+  the user-facing strings all live in `app.py`.
+- Sample images are [Ultralytics'](https://ultralytics.com) public demo images.
 
-## Lisans
+## License
 
 MIT

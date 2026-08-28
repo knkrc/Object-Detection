@@ -11,17 +11,20 @@ license: mit
 
 # 🎯 Object Detection
 
-YOLOv8 ile nesne tespiti ve takibi. [Kaynak kod ve detaylar](https://github.com/knkrc/Object-Detection).
+Object detection and tracking with YOLOv8.
+[Source code and details](https://github.com/knkrc/Object-Detection).
 
-- **Resim** — bir görsel yükle, tespit edilen nesneleri kutularla gör
-- **Video** — MP4 yükle, kare kare işle, işlenmiş videoyu indir
-- **Takip** — her nesneye kalıcı ID, benzersiz sayım, çizgi geçişi, hareket izi
-- **Örnekler** — dosya yüklemeden hemen dene
-- **Model performansı** — kendi eğittiğimiz modelin metrikleri ve önce/sonra karşılaştırması
+- **Image** — upload a picture, see detections drawn as boxes
+- **Video** — upload an MP4, process it frame by frame, download the result
+- **Tracking** — persistent IDs, unique counts, line crossings, motion trails
+- **Samples** — try it without uploading anything
+- **Performance** — metrics for our fine-tuned model and a before/after comparison
 
-İki model var: hazır COCO modeli (80 sınıf) ve African Wildlife veri setiyle
-fine-tune ettiğimiz model (buffalo, elephant, rhino, zebra — mAP50 0.957).
-Kenar çubuğundan seçilebilir.
+Two models are available from the sidebar: the pretrained COCO model (80 classes)
+and one we fine-tuned on the African Wildlife dataset — buffalo, elephant, rhino
+and zebra, mAP50 0.957.
 
-> Webcam sekmesi burada yok: sunucuda kamera açmak ziyaretçinin değil sunucunun
-> kamerasını açardı. Repoyu yerelde çalıştırırsan o sekme de geliyor.
+> The interface is in Turkish.
+
+> There is no webcam tab here: on a server, opening a camera would open the
+> *server's* camera rather than yours. Run the repo locally and that tab appears.
