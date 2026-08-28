@@ -43,8 +43,14 @@ cp -r "$ROOT/src" "$ROOT/models" "$ROOT/samples" "$ROOT/docs" .
 # The Space's own README: HF reads its configuration from the frontmatter
 cp "$ROOT/deploy/space-README.md" README.md
 
-# Keep training output and compiled files out
+# The app reads docs/metrics.json, docs/comparison and docs/plots for its
+# performance tab. The demo GIF and screenshots are README-only, so drop them
+# rather than shipping ~3 MB the Space never serves.
+rm -rf docs/screenshots docs/demo.gif
+
+# Keep compiled files and macOS clutter out
 find . -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+find . -name .DS_Store -delete 2>/dev/null || true
 
 echo "-> Pushing"
 git add -A
