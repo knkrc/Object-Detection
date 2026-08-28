@@ -74,6 +74,9 @@ jobs:
 
       # Imajin sadece derlenmesi yetmez; gercekten ayaga kalkip cevap
       # verdigini de gormek istiyoruz.
+      - name: Imaj boyutu
+        run: docker images object-detection:ci --format "{{.Size}}"
+
       - name: Konteyneri baslat
         run: docker run -d --name od -p 8501:8501 object-detection:ci
 
@@ -81,7 +84,7 @@ jobs:
         run: |
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:8501/_stcore/health; then
-              echo "\nuygulama ayakta"
+              echo "uygulama ayakta"
               exit 0
             fi
             sleep 2
