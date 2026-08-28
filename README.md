@@ -19,9 +19,7 @@ distinct cars passed through this video?*
 ![Demo](docs/demo.gif)
 
 *Detection on a sample image → filtering to one class (the bus box disappears) →
-switching to our fine-tuned model → metrics and a before/after comparison.*
-
-> The interface is in Turkish. See [Notes](#notes) if you would like it in English.
+model performance metrics → switching to our fine-tuned model → before/after comparison.*
 
 ---
 
@@ -34,11 +32,11 @@ switching to our fine-tuned model → metrics and a before/after comparison.*
 | 📹 **Webcam** | Live detection from your computer's camera |
 | 🖼️ **Samples** | Try it in one click with images shipped in the repo |
 | 🎯 **Tracking** | ByteTrack: persistent IDs, unique counts, line crossings, motion trails |
-| 🧠 **Your own model** | A fine-tuned model, selectable in the sidebar under "Özel:" |
+| 🧠 **Your own model** | A fine-tuned model, selectable in the sidebar under "Custom:" |
 | 📊 **Performance** | mAP tables, training curves, before/after comparison |
 | ⚙️ **Settings** | Model size (n/s/m), confidence threshold, class filter |
 
-![Detection result](docs/screenshots/tespit.jpg)
+![Detection result](docs/screenshots/detection.jpg)
 
 ### What tracking mode adds
 
@@ -108,7 +106,7 @@ Validation set: 225 images, 379 instances.
 
 The metrics and the before/after comparison also live inside the app:
 
-![Model performance tab](docs/screenshots/model-performansi.jpg)
+![Model performance tab](docs/screenshots/model-performance.jpg)
 
 <details>
 <summary>Training curves</summary>
@@ -119,7 +117,7 @@ The metrics and the before/after comparison also live inside the app:
 </details>
 
 The trained model is committed to the repo (`models/african-wildlife.pt`, 5.9 MB) —
-clone it and pick **"Özel: african-wildlife"** in the sidebar to try it right away.
+clone it and pick **"Custom: african-wildlife"** in the sidebar to try it right away.
 
 ### Training your own
 
@@ -279,9 +277,7 @@ See [CLAUDE.md](CLAUDE.md) for details and notes from each milestone.
   ultralytics tries to install it itself but then asks for a restart.
 - The webcam tab asks for camera permission on macOS; you may need to restart your
   terminal after granting it.
-- **The app's interface, code comments and `CLAUDE.md` are in Turkish.** Only this
-  README is in English. Translating the UI is a small change if you need it —
-  the user-facing strings all live in `app.py`.
+- The app's interface is in English. Code comments and `CLAUDE.md` are in Turkish.
 - Sample images are [Ultralytics'](https://ultralytics.com) public demo images.
 
 ## License

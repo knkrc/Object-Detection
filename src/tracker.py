@@ -55,10 +55,10 @@ class LineCounter:
         self,
         p1: tuple[int, int],
         p2: tuple[int, int],
-        names: tuple[str, str] = ("ileri", "geri"),
+        names: tuple[str, str] = ("forward", "backward"),
     ):
         # names[0] cizginin pozitif tarafina gecisi, names[1] negatif tarafa
-        # gecisi adlandirir. Yatay/dikey cizgide "asagi/yukari", "saga/sola"
+        # gecisi adlandirir. Yatay/dikey cizgide "down/up", "right/left"
         # gibi anlamli isimler verilebilsin diye disaridan aliniyor.
         self.p1 = p1
         self.p2 = p2
@@ -235,33 +235,33 @@ class TrackSession:
         rows = [
             {
                 "id": tid,
-                "nesne": record.label,
-                "sure_sn": round(record.frames / self.fps, 2) if self.fps else 0.0,
-                "kare": record.frames,
-                "ilk_kare": record.first_frame,
-                "son_kare": record.last_frame,
+                "object": record.label,
+                "seconds": round(record.frames / self.fps, 2) if self.fps else 0.0,
+                "frames": record.frames,
+                "first_frame": record.first_frame,
+                "last_frame": record.last_frame,
             }
             for tid, record in self.seen.items()
         ]
-        return sorted(rows, key=lambda r: -r["sure_sn"])
+        return sorted(rows, key=lambda r: -r["seconds"])
 
     def summary(self) -> dict:
         return {
             "unique": self.unique_counts(),
-            "toplam_nesne": len(self.seen),
-            "cizgi": dict(self.line.counts) if self.line else None,
-            "kare": self.frame_index,
+            "total_objects": len(self.seen),
+            "line": dict(self.line.counts) if self.line else None,
+            "frames": self.frame_index,
         }
 
 
 def line_from_ratio(width: int, height: int, orientation: str, position: float) -> LineCounter:
-    """Arayuzdeki 'yatay/dikey + %konum' secimini piksel koordinatlarina cevirir."""
-    if orientation == "yatay":
+    """Arayuzdeki 'horizontal/vertical + %konum' secimini piksel koordinatina cevirir."""
+    if orientation == "horizontal":
         # Soldan saga cizilen cizgide pozitif taraf asagisi olur.
         y = int(height * position)
-        return LineCounter((0, y), (width, y), names=("asagi", "yukari"))
+        return LineCounter((0, y), (width, y), names=("down", "up"))
 
     # Dikey cizgiyi asagidan yukari cizeriz ki pozitif taraf sag olsun;
-    # aksi halde saga dogru hareket "geri" olarak sayilir.
+    # aksi halde saga dogru hareket "left" olarak sayilir.
     x = int(width * position)
-    return LineCounter((x, height), (x, 0), names=("saga", "sola"))
+    return LineCounter((x, height), (x, 0), names=("right", "left"))

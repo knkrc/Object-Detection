@@ -5,7 +5,7 @@ Ornek:
     python scripts/train.py --data brain-tumor.yaml --model yolov8s.pt --epochs 50
 
 Egitim bitince en iyi agirlik `models/<isim>.pt` olarak kopyalanir; arayuz
-bunu "Ozel: <isim>" seklinde otomatik olarak model listesine ekler.
+bunu "Custom: <isim>" seklinde otomatik olarak model listesine ekler.
 """
 
 import argparse
@@ -97,7 +97,7 @@ def main() -> None:
     print()
     print(f"Egitim bitti. Ciktilar: {results.save_dir}")
     print(f"En iyi agirlik kopyalandi: {target}")
-    print(f"Arayuzde 'Ozel: {name}' olarak gorunecek.")
+    print(f"Arayuzde 'Custom: {name}' olarak gorunecek.")
 
 
 if __name__ == "__main__":

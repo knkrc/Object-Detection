@@ -102,6 +102,10 @@ docker compose up --build            # konteynerde çalıştır
 - **`pythonpath = ["."]` pytest yapılandırmasında şart.** CI `pytest` komutunu
   doğrudan çağırıyor; `python -m pytest`ten farklı olarak çalışma dizinini
   `sys.path`'e eklemiyor ve `import src` patlıyor.
+- **Arayüz metni değişirse görselleri yenile.** `docs/screenshots/`, `docs/demo.gif`
+  ve `docs/comparison/` uygulamanın ekranını ve çıktılarını gösteriyor; metin
+  değişince eskiyorlar. Üç komut: `scripts/screenshot.py`, `scripts/make_demo_gif.py`,
+  `scripts/compare.py`. Metrik anahtarları değişirse `scripts/evaluate.py` de.
 - **`is_deployed()` webcam sekmesini sunucuda gizliyor.** `cv2.VideoCapture(0)`
   uygulamanın *çalıştığı makinenin* kamerasını açıyor; sunucuda bu ziyaretçinin
   değil sunucunun kamerası olurdu. Sekme oluşturulmuyor bile — blok bir
@@ -121,6 +125,11 @@ docker compose up --build            # konteynerde çalıştır
 ## Kod kuralları
 
 - Yorumlar Türkçe, kod/değişken isimleri İngilizce.
+- **Kullanıcıya görünen her şey İngilizce.** Arayüz metinleri, model etiketleri
+  (`Custom: <isim>`), çizgi yön isimleri (`down`/`up`, `right`/`left`), CSV
+  sütunları, `metrics.json` anahtarları ve karşılaştırma görsellerindeki
+  şeritler — hepsi İngilizce. Yeni bir kullanıcı metni eklerken bu ayrımı koru:
+  yorum Türkçe, ekrana çıkan İngilizce.
 - **İki README var:** `README.md` İngilizce (birincil, uluslararası başvurular
   için), `README.tr.md` Türkçe. İkisi de karşılıklı link veriyor. Bir şey
   değişince **ikisini birden** güncelle — özellikle test sayısı, kapsam yüzdesi
@@ -355,6 +364,47 @@ kısımları yalnızca `slow` testlerde.
 
 ---
 
+### ✅ Arayüzü İngilizceye çevirme (2026-08-28)
+
+M5 sonrası, README İngilizceye çevrildikten sonra gelen tamamlayıcı adım.
+
+**Çevrilenler**
+- `app.py` — bütün etiketler, yardım metinleri, mesajlar, buton ve sekme isimleri,
+  indirilen dosya adları (`detected_*.png`, `tracking-data.csv`).
+- `src/config.py` — model etiketleri (`YOLOv8n (fast)` vb.), `Ozel:` → `Custom:`
+  (artık `CUSTOM_PREFIX` sabiti).
+- `src/tracker.py` — çizgi yön isimleri (`asagi/yukari` → `down/up`,
+  `saga/sola` → `right/left`), süre tablosu sütunları (`object`, `seconds`,
+  `frames`, `first_frame`, `last_frame`), özet anahtarları (`total_objects`,
+  `line`, `frames`). `line_from_ratio` artık `horizontal`/`vertical` alıyor.
+- `src/video.py` — hata mesajları.
+- `scripts/evaluate.py` — `metrics.json` anahtarları (`overall`, `per_class`,
+  `class`) ve markdown başlıkları.
+- `scripts/compare.py` — görsel üstündeki şeritler ("Pretrained COCO model" /
+  "Our own model"), özet ızgara adı `ozet.jpg` → `summary.jpg`.
+- `deploy/space-README.md` — "arayüz Türkçe" notu kaldırıldı.
+
+**Yeniden üretilenler:** `docs/metrics.{json,md}`, `docs/comparison/*` (7 görsel),
+`docs/screenshots/*` (`tespit.jpg` → `detection.jpg`,
+`model-performansi.jpg` → `model-performance.jpg`), `docs/demo.gif`.
+
+**Testler:** 65 test, hepsi yeni isimlere göre güncellendi. Çizgi yön mantığı
+üç senaryoda tekrar doğrulandı (`right: 4`, `down: 4`, `left: 4`).
+
+**Yol boyunca düzeltilen**
+- Demo GIF'inde modele geçiş sırası değiştirildi. Önce yaban hayatı modeline
+  geçip sonra metrik sekmesine gidince, model otobüs fotoğrafını yeniden
+  değerlendirip "elephant 0.43" gibi alan dışı tespitler üretiyordu — doğru ama
+  izleyene modelin kötü olduğunu düşündüren bir kare. Artık önce sekmeye geçilip
+  sonra model değiştiriliyor.
+- `metrics.json` anahtarları değişince `app.py`'nin okuduğu alanlar da
+  değişmek zorundaydı; `evaluate.py` yeniden çalıştırılarak dosya üretildi.
+
+**Kalan:** Kod yorumları ve CLAUDE.md hâlâ Türkçe. Uluslararası bir kod
+incelemesi için yorumların da çevrilmesi gerekebilir — ayrı bir karar.
+
+---
+
 ## Sıradaki milestone'lar
 
 ### 🔜 Sonraki adım — demoyu yayına al
@@ -366,10 +416,8 @@ gönder ve linki README'ye ekle. Kalan tek iş bu; altyapı hazır.
 - Isı haritası / yoğunluk görselleştirmesi.
 - Tespit sonuçlarını JSON olarak dışa aktarma (takip CSV'si M2'de eklendi).
 - BoT-SORT seçeneği: uzun süre kaybolan nesneyi re-ID ile hatırlar.
-- Arayüz metinlerini İngilizceye çevirmek — README İngilizce ama uygulama,
-  ekran görüntüleri ve GIF hâlâ Türkçe. Kullanıcıya görünen metinler `app.py`'de
-  toplu duruyor; çevirirsek ekran görüntüleri ve GIF'in de yenilenmesi gerekir
-  (iki script'le tek komut).
+- Kod yorumlarını İngilizceye çevirmek — arayüz ve README İngilizce, yorumlar
+  Türkçe. Uluslararası bir kod incelemesi için gerekebilir.
 - Kendi topladığın görsellerle ikinci bir veri seti (M3 altyapısı hazır).
 - Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
 - `streamlit.testing` ile arayüz testleri.

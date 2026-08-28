@@ -16,7 +16,7 @@ def video_info(source: Path) -> dict:
     """Videoyu acmadan once fps/boyut gibi bilgileri okur (arayuz icin)."""
     capture = cv2.VideoCapture(str(source))
     if not capture.isOpened():
-        raise RuntimeError(f"Video acilamadi: {source}")
+        raise RuntimeError(f"Could not open video: {source}")
     try:
         return {
             "fps": capture.get(cv2.CAP_PROP_FPS) or 25.0,
@@ -35,7 +35,7 @@ def _writer(path: Path, fps: float, size: tuple[int, int]) -> cv2.VideoWriter:
         if writer.isOpened():
             return writer
         writer.release()
-    raise RuntimeError("Video yazici acilamadi (codec destegi yok).")
+    raise RuntimeError("Could not open video writer (no codec support).")
 
 
 def process_video(
@@ -52,7 +52,7 @@ def process_video(
     """
     capture = cv2.VideoCapture(str(source))
     if not capture.isOpened():
-        raise RuntimeError(f"Video acilamadi: {source}")
+        raise RuntimeError(f"Could not open video: {source}")
 
     fps = capture.get(cv2.CAP_PROP_FPS) or 25.0
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))

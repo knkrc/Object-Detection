@@ -2,7 +2,7 @@
 
 `custom_models()` arayuzun dogrudan guvendigi bir fonksiyon: models/ altina
 konan her .pt dosyasi model listesinde gorunmeli, hazir modeller ise
-"Ozel:" olarak ikinci kez listelenmemeli.
+"Custom:" olarak ikinci kez listelenmemeli.
 """
 
 import src.config as config
@@ -30,17 +30,17 @@ def test_custom_models_egitilmis_modeli_bulur(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "MODELS_DIR", tmp_path)
     (tmp_path / "african-wildlife.pt").touch()
 
-    assert config.custom_models() == {"Ozel: african-wildlife": "african-wildlife.pt"}
+    assert config.custom_models() == {"Custom: african-wildlife": "african-wildlife.pt"}
 
 
 def test_custom_models_hazir_modelleri_disarida_birakir(tmp_path, monkeypatch):
-    """yolov8n.pt zaten listede; "Ozel:" olarak ikinci kez gorunmemeli."""
+    """yolov8n.pt zaten listede; "Custom:" olarak ikinci kez gorunmemeli."""
     monkeypatch.setattr(config, "MODELS_DIR", tmp_path)
     for name in AVAILABLE_MODELS.values():
         (tmp_path / name).touch()
     (tmp_path / "kendi-modelim.pt").touch()
 
-    assert config.custom_models() == {"Ozel: kendi-modelim": "kendi-modelim.pt"}
+    assert config.custom_models() == {"Custom: kendi-modelim": "kendi-modelim.pt"}
 
 
 def test_custom_models_pt_disi_dosyalari_yok_sayar(tmp_path, monkeypatch):
@@ -56,7 +56,7 @@ def test_custom_models_alfabetik_siralar(tmp_path, monkeypatch):
     for name in ("zebra.pt", "aslan.pt", "manda.pt"):
         (tmp_path / name).touch()
 
-    assert list(config.custom_models()) == ["Ozel: aslan", "Ozel: manda", "Ozel: zebra"]
+    assert list(config.custom_models()) == ["Custom: aslan", "Custom: manda", "Custom: zebra"]
 
 
 # --- is_deployed ---------------------------------------------------------

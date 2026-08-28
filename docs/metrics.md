@@ -1,19 +1,19 @@
-# Egitim sonuclari — `african-wildlife.pt`
+# Training results — `african-wildlife.pt`
 
-Veri seti: `african-wildlife.yaml`
+Dataset: `african-wildlife.yaml`
 
-## Genel
+## Overall
 
-| Metrik | Deger |
+| Metric | Value |
 |---|---|
 | mAP50 | 0.957 |
 | mAP50-95 | 0.791 |
 | precision | 0.954 |
 | recall | 0.895 |
 
-## Sinif bazinda
+## Per class
 
-| Sinif | mAP50 | mAP50-95 | Precision | Recall |
+| Class | mAP50 | mAP50-95 | Precision | Recall |
 |---|---|---|---|---|
 | buffalo | 0.970 | 0.817 | 1.000 | 0.879 |
 | elephant | 0.927 | 0.741 | 0.859 | 0.879 |

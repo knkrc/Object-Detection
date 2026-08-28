@@ -24,7 +24,5 @@ Two models are available from the sidebar: the pretrained COCO model (80 classes
 and one we fine-tuned on the African Wildlife dataset — buffalo, elephant, rhino
 and zebra, mAP50 0.957.
 
-> The interface is in Turkish.
-
 > There is no webcam tab here: on a server, opening a camera would open the
 > *server's* camera rather than yours. Run the repo locally and that tab appears.

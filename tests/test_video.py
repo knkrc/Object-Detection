@@ -22,12 +22,12 @@ def test_video_info_dogru_okuyor(synthetic_video):
 
 
 def test_video_info_olmayan_dosyada_hata(tmp_path):
-    with pytest.raises(RuntimeError, match="acilamadi"):
+    with pytest.raises(RuntimeError, match="Could not open"):
         video_info(tmp_path / "yok.mp4")
 
 
 def test_process_video_olmayan_dosyada_hata(tmp_path):
-    with pytest.raises(RuntimeError, match="acilamadi"):
+    with pytest.raises(RuntimeError, match="Could not open"):
         process_video(tmp_path / "yok.mp4", tmp_path / "cikti.mp4", lambda f: f)
 
 

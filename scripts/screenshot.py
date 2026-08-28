@@ -70,15 +70,15 @@ def main() -> None:
             page.wait_for_timeout(6000)
 
             print("Ekran goruntuleri:")
-            open_tab(page, "Ornekler")
+            open_tab(page, "Samples")
             page.wait_for_timeout(4000)  # tespit calisiyor
-            shoot(page, "tespit")
+            shoot(page, "detection")
 
             # Metrikler egitilmis modele ait; kenar cubugunun da onu gostermesi
             # icin once modeli secip sonra sekmeye geciyoruz.
-            select_model(page, "Ozel: african-wildlife")
-            open_tab(page, "Model performansi")
-            shoot(page, "model-performansi")
+            select_model(page, "Custom: african-wildlife")
+            open_tab(page, "Model performance")
+            shoot(page, "model-performance")
 
             browser.close()
     finally:

@@ -92,7 +92,7 @@ def find_images(args) -> list[Path]:
     folder = find_folder(args)
     images = sorted(p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
     if not images:
-        raise SystemExit(f"Klasorde gorsel yok: {folder}")
+        raise SystemExit(f"No images in folder: {folder}")
 
     random.seed(args.seed)
 
@@ -128,8 +128,8 @@ def output_name(detections, used: set[str]) -> str:
     kutusunda hangi gorsele baktigini gosteriyor.
     """
     counts = summarize(detections)
-    base = next(iter(counts), "tespit-yok")
-    base = re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-") or "gorsel"
+    base = next(iter(counts), "no-detection")
+    base = re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-") or "image"
 
     name, index = base, 1
     while name in used:
@@ -142,7 +142,7 @@ def output_name(detections, used: set[str]) -> str:
 def as_labels(detections) -> str:
     """'2x elephant, 1x cow' seklinde kisa bir ozet."""
     counts = summarize(detections)
-    return ", ".join(f"{n}x {label}" for label, n in counts.items()) or "hicbir sey"
+    return ", ".join(f"{n}x {label}" for label, n in counts.items()) or "nothing"
 
 
 def with_banner(image: np.ndarray, text: str) -> np.ndarray:
@@ -170,7 +170,7 @@ def main() -> None:
 
     custom_path = Path(args.custom)
     if not custom_path.exists():
-        raise SystemExit(f"Ozel model bulunamadi: {custom_path}\nOnce scripts/train.py calistir.")
+        raise SystemExit(f"Custom model not found: {custom_path}\nRun scripts/train.py first.")
 
     baseline = Detector(args.baseline)
     is_in_models_dir = custom_path.parent.name == "models"
@@ -194,24 +194,24 @@ def main() -> None:
         own_text = as_labels(own_hits)
 
         panel = side_by_side(
-            with_banner(base_drawn, f"Hazir COCO modeli: {base_text}"),
-            with_banner(own_drawn, f"Kendi modelimiz: {own_text}"),
+            with_banner(base_drawn, f"Pretrained COCO model: {base_text}"),
+            with_banner(own_drawn, f"Our own model: {own_text}"),
         )
         cv2.imwrite(str(target / f"{output_name(own_hits, used_names)}.jpg"), panel)
         panels.append(panel)
 
-        mark = "  <-- farkli" if base_text != own_text else ""
-        print(f"{path.name:16} hazir: {base_text:28} ozel: {own_text}{mark}")
+        mark = "  <-- differs" if base_text != own_text else ""
+        print(f"{path.name:16} pretrained: {base_text:28} custom: {own_text}{mark}")
 
     if panels:
         width = min(p.shape[1] for p in panels)
         stacked = np.vstack(
             [cv2.resize(p, (width, int(p.shape[0] * width / p.shape[1]))) for p in panels]
         )
-        grid_path = target / "ozet.jpg"
+        grid_path = target / "summary.jpg"
         cv2.imwrite(str(grid_path), stacked)
-        print(f"\n{len(panels)} karsilastirma yazildi: {target}")
-        print(f"Ozet izgara: {grid_path}")
+        print(f"\n{len(panels)} comparisons written to: {target}")
+        print(f"Summary grid: {grid_path}")
 
 
 if __name__ == "__main__":
