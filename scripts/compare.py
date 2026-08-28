@@ -1,10 +1,10 @@
-"""Hazir COCO modeli ile kendi egittigimiz modeli ayni goresellerde karsilastirir.
+"""Compares the pretrained COCO model with our own on the same images.
 
-Ornek:
+Example:
     python scripts/compare.py --custom models/african-wildlife.pt
 
-Cikti: docs/comparison/ altinda yan yana gorseller ve bir ozet izgara.
-Amac, "hazir model bunu bilmiyor, benim modelim biliyor" farkini gostermek.
+Output: side-by-side images and a summary grid under docs/comparison/.
+The point is to show what the pretrained model does not know and ours does.
 """
 
 import argparse
@@ -28,11 +28,13 @@ BANNER_HEIGHT = 44
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--custom", default="models/african-wildlife.pt")
-    parser.add_argument("--baseline", default="yolov8n.pt", help="Karsilastirilacak hazir model")
+    parser.add_argument(
+        "--baseline", default="yolov8n.pt", help="Pretrained model to compare against"
+    )
     parser.add_argument(
         "--images",
         default=None,
-        help="Gorsellerin bulundugu klasor (varsayilan: veri setinin val bolumu)",
+        help="Folder holding the images (default: the dataset's val split)",
     )
     parser.add_argument("--dataset", default="african-wildlife")
     parser.add_argument("--count", type=int, default=6)
@@ -41,7 +43,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# Veri setleri dogrulama bolumunu farkli duzenlerde tutuyor; hepsini deneriz.
+# Datasets lay out their validation split differently; try all the common ones.
 VAL_LAYOUTS = [
     ("images", "val"),
     ("images", "valid"),
@@ -60,19 +62,19 @@ def find_folder(args) -> Path:
 
     if not folder.exists():
         raise SystemExit(
-            f"Gorsel klasoru bulunamadi: {folder}\n--images ile klasoru elle verebilirsin."
+            f"Image folder not found: {folder}\nPass --images to point at one yourself."
         )
     return folder
 
 
 def label_path(image: Path) -> Path:
-    """Bir gorselin YOLO etiket dosyasi: .../images/val/x.jpg -> .../labels/val/x.txt"""
+    """An image's YOLO label file: .../images/val/x.jpg -> .../labels/val/x.txt"""
     parts = [("labels" if part == "images" else part) for part in image.parts]
     return Path(*parts).with_suffix(".txt")
 
 
 def first_class(image: Path) -> int | None:
-    """Gorseldeki ilk nesnenin sinif id'si; etiket yoksa None."""
+    """Class id of the first object in an image; None when there is no label."""
     labels = label_path(image)
     if not labels.exists():
         return None
@@ -83,11 +85,11 @@ def first_class(image: Path) -> int | None:
 
 
 def find_images(args) -> list[Path]:
-    """Her siniftan ornek secer.
+    """Picks samples from every class.
 
-    Rastgele secim, veri setinde cok olan sinifa (burada fil) yigilabiliyor;
-    oysa asil ilginc olan hazir modelin *bilmedigi* siniflar. Sinif basina
-    esit dagitmak hem daha temsili hem de karsilastirmayi anlamli kiliyor.
+    Random sampling piles up on whichever class dominates the dataset (elephant,
+    here), while the interesting cases are the classes the pretrained model does
+    *not* know. Spreading evenly is both more representative and more useful.
     """
     folder = find_folder(args)
     images = sorted(p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
@@ -121,11 +123,11 @@ def find_images(args) -> list[Path]:
 
 
 def output_name(detections, used: set[str]) -> str:
-    """Cikti dosyasini iceriginden adlandirir: rhino-1.jpg, buffalo-2.jpg...
+    """Names the output file after its content: rhino-1.jpg, buffalo-2.jpg...
 
-    Veri setindeki dosya adlarinda bosluk ve parantez var; bunlar README'de
-    ve URL'de sorun cikariyor. Ayrica anlamli isim, arayuzdeki secim
-    kutusunda hangi gorsele baktigini gosteriyor.
+    Filenames in the dataset contain spaces and parentheses, which cause trouble
+    in the README and in URLs. A meaningful name also tells you which image you
+    are looking at in the app's picker.
     """
     counts = summarize(detections)
     base = next(iter(counts), "no-detection")
@@ -140,22 +142,22 @@ def output_name(detections, used: set[str]) -> str:
 
 
 def as_labels(detections) -> str:
-    """'2x elephant, 1x cow' seklinde kisa bir ozet."""
+    """A short summary like "2x elephant, 1x cow"."""
     counts = summarize(detections)
     return ", ".join(f"{n}x {label}" for label, n in counts.items()) or "nothing"
 
 
 def with_banner(image: np.ndarray, text: str) -> np.ndarray:
-    """Gorselin ustune hangi modelin sonucu oldugunu yazan bir serit ekler."""
+    """Adds a banner above the image saying which model produced it."""
     banner = np.full((BANNER_HEIGHT, image.shape[1], 3), 30, np.uint8)
-    # Uzun etiket listesi serite sigsin diye yaziyi genislige gore olcekliyoruz.
+    # Scale the text to the width so a long label list still fits the banner.
     scale = min(0.7, max(0.4, image.shape[1] / (len(text) * 22)))
     cv2.putText(banner, text, (12, 30), cv2.FONT_HERSHEY_SIMPLEX, scale, (255, 255, 255), 2)
     return np.vstack([banner, image])
 
 
 def side_by_side(left: np.ndarray, right: np.ndarray) -> np.ndarray:
-    """Iki gorseli ayni yukseklige getirip yan yana koyar."""
+    """Puts two images side by side at the same height."""
     height = min(left.shape[0], right.shape[0])
 
     def fit(image):
@@ -189,7 +191,8 @@ def main() -> None:
         base_drawn, base_hits = baseline.detect(image, args.conf)
         own_drawn, own_hits = custom.detect(image, args.conf)
 
-        # Asil fark sayida degil etikette: hazir model gergedani "cow" saniyor.
+        # The real difference is the label, not the count: the pretrained
+        # model thinks a rhino is a "cow".
         base_text = as_labels(base_hits)
         own_text = as_labels(own_hits)
 

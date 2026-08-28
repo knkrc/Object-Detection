@@ -1,8 +1,8 @@
-"""Uygulamayi baslatip tarayiciyla gezmek icin ortak yardimcilar.
+"""Shared helpers for starting the app and driving it with a browser.
 
-screenshot.py ve make_demo_gif.py ayni isi yapiyor: streamlit'i ayaga kaldir,
-hazir olmasini bekle, sekmelerde gez. Tekrar etmemek icin buraya alindi.
-Alt cizgiyle basliyor cunku dogrudan calistirilan bir script degil.
+screenshot.py and make_demo_gif.py do the same setup: bring streamlit up, wait
+until it is ready, walk through the tabs. Pulled out here to avoid repeating it.
+The leading underscore marks it as a helper, not a script you run directly.
 """
 
 import subprocess
@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def wait_for(url: str, timeout: int = 90) -> bool:
-    """Streamlit'in saglik ucuna cevap vermesini bekler."""
+    """Waits for Streamlit's health endpoint to respond."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -29,7 +29,7 @@ def wait_for(url: str, timeout: int = 90) -> bool:
 
 
 def start_app(port: int) -> tuple[subprocess.Popen, str]:
-    """Streamlit'i arka planda baslatir ve hazir olmasini bekler."""
+    """Starts Streamlit in the background and waits until it is ready."""
     url = f"http://localhost:{port}"
     process = subprocess.Popen(
         [
@@ -41,7 +41,7 @@ def start_app(port: int) -> tuple[subprocess.Popen, str]:
             f"--server.port={port}",
             "--server.headless=true",
             "--browser.gatherUsageStats=false",
-            # "Deploy" butonu ve menu goruntude gereksiz gurultu
+            # The "Deploy" button and menu are just noise in a screenshot
             "--client.toolbarMode=viewer",
         ],
         cwd=ROOT,
@@ -50,18 +50,18 @@ def start_app(port: int) -> tuple[subprocess.Popen, str]:
     )
     if not wait_for(url):
         process.terminate()
-        raise SystemExit(f"Uygulama {port} portunda ayaga kalkmadi.")
+        raise SystemExit(f"The app did not come up on port {port}.")
     return process, url
 
 
 def open_tab(page, label: str, settle: int = 2500) -> None:
-    """Sekme basligina tiklar ve icerigin yerlesmesini bekler."""
+    """Clicks a tab and waits for its content to settle."""
     page.get_by_role("tab", name=label).click()
     page.wait_for_timeout(settle)
 
 
 def select_model(page, label: str, settle: int = 6000) -> None:
-    """Kenar cubugundaki model secim kutusundan bir secenek secer."""
+    """Picks an option from the model selectbox in the sidebar."""
     page.get_by_role("combobox").first.click()
     page.wait_for_timeout(500)
     page.get_by_text(label, exact=True).click()

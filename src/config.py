@@ -1,23 +1,23 @@
-"""Uygulama genelinde kullanilan sabitler."""
+"""Constants used across the application."""
 
 import os
 from pathlib import Path
 
-# Proje kok dizini (src/config.py -> src -> kok)
+# Project root (src/config.py -> src -> root)
 ROOT = Path(__file__).resolve().parent.parent
 
 MODELS_DIR = ROOT / "models"
 SAMPLES_DIR = ROOT / "samples"
 OUTPUTS_DIR = ROOT / "outputs"
-RUNS_DIR = ROOT / "runs"  # ultralytics egitim ciktilari
-DATASETS_DIR = ROOT / "datasets"  # indirilen veri setleri
-DOCS_DIR = ROOT / "docs"  # metrik tablosu, egitim grafikleri
+RUNS_DIR = ROOT / "runs"  # ultralytics training output
+DATASETS_DIR = ROOT / "datasets"  # downloaded datasets
+DOCS_DIR = ROOT / "docs"  # metric tables, training plots
 
 for _d in (MODELS_DIR, SAMPLES_DIR, OUTPUTS_DIR, DOCS_DIR):
     _d.mkdir(exist_ok=True)
 
-# Kullanilabilir modeller: isim -> agirlik dosyasi.
-# Ilk calistirmada ultralytics bu dosyalari otomatik indirir.
+# Available models: label -> weights file.
+# Ultralytics downloads these automatically the first time they are used.
 AVAILABLE_MODELS = {
     "YOLOv8n (fast)": "yolov8n.pt",
     "YOLOv8s (balanced)": "yolov8s.pt",
@@ -26,20 +26,20 @@ AVAILABLE_MODELS = {
 
 DEFAULT_MODEL = "YOLOv8n (fast)"
 
-# Kendi egittigimiz modeller arayuzde bu onekle listeleniyor
+# Models we trained ourselves are listed in the UI under this prefix
 CUSTOM_PREFIX = "Custom: "
 
 
 def is_deployed() -> bool:
-    """Uygulama bir sunucuda mi calisiyor?
+    """Is the app running on a server?
 
-    Webcam sekmesi `cv2.VideoCapture(0)` ile *calisan makinenin* kamerasini
-    aciyor. Yerelde bu kullanicinin kamerasi, sunucuda ise (varsa) sunucunun
-    kamerasi olurdu — yani ziyaretci icin anlamsiz. Sunucuda o sekmeyi
-    gizliyoruz.
+    The webcam tab uses `cv2.VideoCapture(0)`, which opens the camera of
+    *whichever machine is running the app*. Locally that is the user's camera;
+    on a server it would be the server's camera (if any) — useless to a visitor.
+    So we hide that tab when deployed.
 
-    `DEPLOYED` degiskeni Dockerfile'da ayarlaniyor; `SPACE_ID` ise Hugging Face
-    Spaces'in kendi ekledigi degisken.
+    `DEPLOYED` is set in the Dockerfile; `SPACE_ID` is added by Hugging Face
+    Spaces itself.
     """
     if os.getenv("DEPLOYED", "").strip().lower() in {"1", "true", "yes"}:
         return True
@@ -47,10 +47,10 @@ def is_deployed() -> bool:
 
 
 def custom_models() -> dict[str, str]:
-    """models/ altindaki, hazir listede olmayan .pt dosyalari = kendi egittiklerimiz.
+    """The .pt files under models/ that are not built-in — i.e. ones we trained.
 
-    Arayuz bunlari "Custom: <isim>" olarak model listesine ekler, boylece
-    egitilen her model otomatik olarak tum sekmelerde kullanilabilir hale gelir.
+    The UI adds them to the model list as "Custom: <name>", so every model we
+    train becomes usable in every tab without touching any code.
     """
     builtin = set(AVAILABLE_MODELS.values())
     return {
@@ -62,13 +62,13 @@ def custom_models() -> dict[str, str]:
 
 DEFAULT_CONF = 0.35
 
-# Video islerken her N kareden birini isle (1 = her kare)
+# When processing video, handle one in every N frames (1 = every frame)
 DEFAULT_FRAME_STRIDE = 1
 
-# --- Takip (tracking) ayarlari ---
-# Hareket izinde saklanan gecmis kare sayisi
+# --- Tracking settings ---
+# How many past frames a motion trail keeps
 DEFAULT_TRAIL_LENGTH = 32
-# Cizgi gecis sayaci: cizginin karedeki varsayilan konumu (0-1 arasi oran)
+# Line crossing counter: the line's default position in the frame (0-1 ratio)
 DEFAULT_LINE_POSITION = 0.5
 
 IMAGE_TYPES = ["jpg", "jpeg", "png", "bmp", "webp"]

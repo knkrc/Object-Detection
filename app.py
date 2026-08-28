@@ -1,6 +1,6 @@
-"""Object Detection - Streamlit arayuzu.
+"""Object Detection - Streamlit interface.
 
-Calistirmak icin:  streamlit run app.py
+To run it:  streamlit run app.py
 """
 
 import csv
@@ -38,7 +38,7 @@ st.set_page_config(page_title="Object Detection", page_icon="🎯", layout="wide
 
 @st.cache_resource(show_spinner="Loading model...")
 def load_detector(weights: str) -> Detector:
-    """Model yuklemesi pahali; ayni agirlik icin tekrar tekrar yuklemeyelim."""
+    """Loading a model is expensive; do not reload the same weights each rerun."""
     return Detector(weights)
 
 
@@ -47,7 +47,7 @@ def to_rgb(image_bgr: np.ndarray) -> np.ndarray:
 
 
 def read_upload(uploaded) -> np.ndarray:
-    """Streamlit'ten gelen dosyayi OpenCV'nin bekledigi BGR diziye cevirir."""
+    """Turns a Streamlit upload into the BGR array OpenCV expects."""
     buffer = np.frombuffer(uploaded.getvalue(), np.uint8)
     return cv2.imdecode(buffer, cv2.IMREAD_COLOR)
 
@@ -57,7 +57,7 @@ def as_counts(counts: dict[str, int]) -> str:
 
 
 def show_results(original_bgr, annotated_bgr, detections, download_name="result.png"):
-    """Orijinal / sonuc karsilastirmasi + tespit ozeti."""
+    """Original vs. result side by side, plus a summary of the detections."""
     left, right = st.columns(2)
     with left:
         st.caption("Original")
@@ -99,7 +99,7 @@ def show_results(original_bgr, annotated_bgr, detections, download_name="result.
 
 
 def tracking_controls(key: str) -> dict:
-    """Takip modu ayarlarini cizer, secimleri sozluk olarak doner."""
+    """Draws the tracking-mode controls and returns the choices as a dict."""
     enabled = st.toggle(
         "🎯 Tracking mode",
         key=f"{key}_track",
@@ -148,7 +148,7 @@ def tracking_controls(key: str) -> dict:
 
 
 def build_session(detector, options, conf, keep_classes, fps, size) -> TrackSession:
-    """Arayuz secimlerinden bir TrackSession kurar."""
+    """Builds a TrackSession from the UI choices."""
     line = None
     if options.get("line"):
         line = line_from_ratio(
@@ -166,7 +166,7 @@ def build_session(detector, options, conf, keep_classes, fps, size) -> TrackSess
 
 
 def show_tracking_summary(session: TrackSession) -> None:
-    """Benzersiz sayim + cizgi sayaci + sure tablosu."""
+    """Unique counts, line counter and the time-on-screen table."""
     summary = session.summary()
 
     columns = st.columns(3 if summary["line"] else 2)
@@ -203,13 +203,13 @@ def show_tracking_summary(session: TrackSession) -> None:
 
 
 # --------------------------------------------------------------------------
-# Kenar cubugu: model ve tespit ayarlari
+# Sidebar: model and detection settings
 # --------------------------------------------------------------------------
 
 st.sidebar.title("⚙️ Settings")
 
-# Kendi egittigimiz modeller models/ altinda duruyor; hazir modellerin
-# yanina eklenince tum sekmeler (resim/video/webcam/takip) onlarla da calisir.
+# Models we trained ourselves live under models/; adding them next to the
+# built-in ones makes every tab (image/video/webcam/tracking) work with them.
 own_models = custom_models()
 model_choices = {**AVAILABLE_MODELS, **own_models}
 
@@ -249,12 +249,12 @@ elif not own_models:
     st.sidebar.caption("To train your own model: `python scripts/train.py`")
 
 # --------------------------------------------------------------------------
-# Ana sayfa
+# Main page
 # --------------------------------------------------------------------------
 
 st.title("🎯 Object Detection")
 
-# Webcam sunucuda anlamsiz oldugu icin orada sekmeyi hic gostermiyoruz.
+# The webcam is meaningless on a server, so we do not show the tab there.
 show_webcam = not is_deployed()
 tab_labels = ["📷 Image", "🎬 Video"]
 if show_webcam:
@@ -272,7 +272,7 @@ tab_image, tab_video = tabs[0], tabs[1]
 tab_webcam = tabs[2] if show_webcam else None
 tab_samples, tab_metrics = tabs[-2], tabs[-1]
 
-# --- Resim ---------------------------------------------------------------
+# --- Image ---------------------------------------------------------------
 with tab_image:
     uploaded = st.file_uploader("Upload an image", type=IMAGE_TYPES, key="image_upload")
     if uploaded:
@@ -314,7 +314,7 @@ with tab_video:
             session = None
 
             if track_options["enabled"]:
-                # Kare atlanirsa sure hesabi icin efektif fps kullanilir.
+                # With frame skipping, durations need the effective fps.
                 session = build_session(
                     detector,
                     track_options,
@@ -367,7 +367,7 @@ with tab_video:
             source.unlink(missing_ok=True)
 
 # --- Webcam --------------------------------------------------------------
-# Sunucuda webcam sekmesi hic olusturulmuyor; blok da calismamali.
+# The webcam tab is never created on a server, so this block must not run either.
 if show_webcam:
     with tab_webcam:
         st.write("Live detection from your computer's camera.")
@@ -412,8 +412,8 @@ if show_webcam:
                 )
 
                 try:
-                    # Durdur'a basilinca Streamlit script'i bastan calistirir ve
-                    # bu dongu kendiliginden kesilir.
+                    # Pressing Stop makes Streamlit rerun the script, which
+                    # breaks out of this loop on its own.
                     while st.session_state.webcam_on:
                         ok, frame = capture.read()
                         if not ok:
@@ -435,7 +435,7 @@ if show_webcam:
                 finally:
                     capture.release()
 
-# --- Ornekler ------------------------------------------------------------
+# --- Samples -------------------------------------------------------------
 with tab_samples:
     sample_files = sorted(
         p for p in SAMPLES_DIR.iterdir() if p.suffix.lstrip(".").lower() in IMAGE_TYPES
@@ -453,7 +453,7 @@ with tab_samples:
             annotated, detections = detector.detect(image, conf, keep_classes)
         show_results(image, annotated, detections, f"detected_{choice.stem}.png")
 
-# --- Model performansi -----------------------------------------------------
+# --- Model performance -----------------------------------------------------
 with tab_metrics:
     metrics_file = DOCS_DIR / "metrics.json"
 

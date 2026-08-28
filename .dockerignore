@@ -8,12 +8,12 @@ __pycache__/
 .venv/
 venv/
 
-# Egitim ciktilari ve veri setleri — imaja girmemeli (GB'larca)
+# Training output and datasets — must not go into the image (gigabytes)
 datasets/
 runs/
 outputs/
 
-# Test ve gelistirme
+# Tests and development
 tests/
 notebooks/
 scripts/
@@ -21,7 +21,7 @@ scripts/
 .coverage
 htmlcov/
 
-# Dokumantasyon (docs/ dahil degil - o uygulamada kullaniliyor)
+# Documentation (docs/ is excluded from this - the app uses it)
 CLAUDE.md
 README*.md
 requirements-dev.txt

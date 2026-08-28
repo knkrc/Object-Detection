@@ -1,12 +1,12 @@
-"""Nesne takibi: her nesneye kalici bir ID verip kareler boyunca izleme.
+"""Object tracking: give each object a persistent ID and follow it across frames.
 
-Tespitten farki: `detect()` her kareyi sifirdan degerlendirir, dolayisiyla
-"kac araba var" sorusunu kare bazinda cevaplar. Takip ise ayni arabayi
-kareler boyunca ayni ID ile tanir; bu sayede "bu videodan toplam kac farkli
-araba gecti" gibi gercek bir sayim yapilabilir.
+How this differs from detection: `detect()` evaluates every frame from scratch,
+so it can only answer "how many cars are there" per frame. Tracking recognises
+the same car across frames under the same ID, which makes a real count possible:
+"how many distinct cars passed through this video".
 
-Durum (ID'ler, izler, sayaclar) `TrackSession` icinde tutulur. Her video veya
-webcam oturumu icin yeni bir TrackSession olusturulur.
+State (IDs, trails, counters) lives in `TrackSession`. A new session is created
+for every video or webcam run.
 """
 
 from collections import defaultdict, deque
@@ -17,13 +17,13 @@ import numpy as np
 
 from src.detector import Detector
 
-# Ultralytics'in hazir tracker yapilandirmalari
+# Tracker configurations that ship with ultralytics
 BYTETRACK = "bytetrack.yaml"
 
 
 @dataclass
 class Track:
-    """Belirli bir karede gorulen, kimlikli bir nesne."""
+    """An identified object seen in one particular frame."""
 
     track_id: int
     label: str
@@ -37,18 +37,18 @@ class Track:
 
 
 def color_for(track_id: int) -> tuple[int, int, int]:
-    """ID'den deterministik bir BGR renk — ayni nesne hep ayni renkte cizilir."""
+    """A deterministic BGR colour from an ID, so an object keeps one colour."""
     hue = np.uint8([[[(track_id * 37) % 180, 200, 255]]])
     b, g, r = cv2.cvtColor(hue, cv2.COLOR_HSV2BGR)[0][0]
     return int(b), int(g), int(r)
 
 
 class LineCounter:
-    """Sanal bir cizgiyi gecen nesneleri yonuyle birlikte sayar.
+    """Counts objects crossing a virtual line, with direction.
 
-    Yontem: cizginin hangi tarafinda oldugumuzu vektorel carpimin isaretinden
-    buluyoruz. Bir ID'nin isareti bir kareden digerine degistiyse cizgiyi
-    gecmis demektir; degisim yonu de giris/cikis ayrimini verir.
+    The method: the sign of the cross product tells us which side of the line a
+    point is on. If an ID's sign flips between two frames it has crossed, and
+    the direction of the flip separates one way from the other.
     """
 
     def __init__(
@@ -57,9 +57,9 @@ class LineCounter:
         p2: tuple[int, int],
         names: tuple[str, str] = ("forward", "backward"),
     ):
-        # names[0] cizginin pozitif tarafina gecisi, names[1] negatif tarafa
-        # gecisi adlandirir. Yatay/dikey cizgide "down/up", "right/left"
-        # gibi anlamli isimler verilebilsin diye disaridan aliniyor.
+        # names[0] labels a crossing to the line's positive side, names[1] the
+        # negative one. Passed in so a horizontal or vertical line can use
+        # meaningful names like "down/up" or "right/left".
         self.p1 = p1
         self.p2 = p2
         self.names = names
@@ -105,7 +105,7 @@ class LineCounter:
 
 @dataclass
 class _Seen:
-    """Bir ID'nin ne zaman ve ne kadar goruldugu."""
+    """When and for how long an ID was seen."""
 
     label: str
     first_frame: int
@@ -115,10 +115,10 @@ class _Seen:
 
 @dataclass
 class TrackSession:
-    """Bir video/webcam oturumunun takip durumu.
+    """Tracking state for one video or webcam session.
 
-    `fps` sure hesabi icin kullanilir. Video kare atlayarak (stride) islenirse
-    buraya *efektif* fps verilmeli (orn. 30 fps / stride 2 = 15).
+    `fps` is used for the duration figures. If the video is processed with a
+    stride, pass the *effective* fps here (e.g. 30 fps with stride 2 = 15).
     """
 
     detector: Detector
@@ -139,10 +139,10 @@ class TrackSession:
         self.reset()
 
     def reset(self) -> None:
-        """Tracker'in ic durumunu temizler.
+        """Clears the tracker's internal state.
 
-        Model `@st.cache_resource` ile paylasildigi icin onceki videodan kalan
-        ID'ler yeni videoya sizabilir; her oturum basinda sifirliyoruz.
+        The model is shared through `@st.cache_resource`, so IDs left over from
+        a previous video can leak into the next one. We reset at session start.
         """
         self.frame_index = 0
         self.unique_ids = defaultdict(set)
@@ -155,7 +155,7 @@ class TrackSession:
                 tracker.reset()
 
     def step(self, frame: np.ndarray) -> tuple[np.ndarray, list[Track]]:
-        """Tek bir kareyi isler; cizilmis kareyi ve o karedeki nesneleri doner."""
+        """Processes one frame; returns the annotated frame and its objects."""
         results = self.detector.model.track(
             source=frame,
             persist=True,
@@ -170,7 +170,7 @@ class TrackSession:
         tracks: list[Track] = []
         for box in result.boxes:
             if box.id is None:
-                # Tracker bu kutuya henuz kimlik atamadi (yeni/kararsiz nesne).
+                # The tracker has not assigned an ID yet (new or unstable object).
                 continue
             x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
             tracks.append(
@@ -223,15 +223,15 @@ class TrackSession:
                 thickness=2,
             )
 
-    # --- ozet ------------------------------------------------------------
+    # --- summary ---------------------------------------------------------
 
     def unique_counts(self) -> dict[str, int]:
-        """Sinif basina kac *farkli* nesne gorulduğu."""
+        """How many *distinct* objects were seen, per class."""
         counts = {label: len(ids) for label, ids in self.unique_ids.items()}
         return dict(sorted(counts.items(), key=lambda kv: -kv[1]))
 
     def durations(self) -> list[dict]:
-        """Her ID icin ekranda kalma suresi, uzundan kisaya."""
+        """Time on screen for each ID, longest first."""
         rows = [
             {
                 "id": tid,
@@ -255,13 +255,13 @@ class TrackSession:
 
 
 def line_from_ratio(width: int, height: int, orientation: str, position: float) -> LineCounter:
-    """Arayuzdeki 'horizontal/vertical + %konum' secimini piksel koordinatina cevirir."""
+    """Turns the UI's 'horizontal/vertical + position' choice into pixels."""
     if orientation == "horizontal":
-        # Soldan saga cizilen cizgide pozitif taraf asagisi olur.
+        # For a line drawn left to right, the positive side is below it.
         y = int(height * position)
         return LineCounter((0, y), (width, y), names=("down", "up"))
 
-    # Dikey cizgiyi asagidan yukari cizeriz ki pozitif taraf sag olsun;
-    # aksi halde saga dogru hareket "left" olarak sayilir.
+    # We draw the vertical line bottom to top so the positive side is the right;
+    # otherwise rightward movement would be counted as "left".
     x = int(width * position)
     return LineCounter((x, height), (x, 0), names=("right", "left"))
