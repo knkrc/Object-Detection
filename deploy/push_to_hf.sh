@@ -40,8 +40,10 @@ git clone "https://user:${HF_TOKEN}@huggingface.co/spaces/${SPACE}" "$WORK/space
 
 echo "-> Copying files"
 cd "$WORK/space"
-# Clear out whatever the previous version left behind (except .git)
-find . -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
+# Clear out whatever the previous version left behind. .gitattributes is kept:
+# HF puts the LFS patterns there, and deleting it makes the push bounce off the
+# "binary files must use Xet storage" hook.
+find . -mindepth 1 -maxdepth 1 -not -name .git -not -name .gitattributes -exec rm -rf {} +
 
 cp "$ROOT/app.py" .
 cp -r "$ROOT/src" "$ROOT/models" "$ROOT/samples" "$ROOT/docs" .
@@ -60,6 +62,13 @@ rm -rf docs/screenshots docs/demo.gif
 # Keep compiled files and macOS clutter out
 find . -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
 find . -name .DS_Store -delete 2>/dev/null || true
+
+# HF rejects binary files that are not in LFS. Its default .gitattributes covers
+# weights (*.pt) but not images, and our screenshots and plots are well over the
+# size threshold. Tracking has to happen before `git add`, or the files go in as
+# raw blobs and the push is rejected.
+git lfs install --local >/dev/null
+git lfs track "*.jpg" "*.jpeg" "*.png" "*.gif" >/dev/null
 
 echo "-> Pushing"
 git add -A

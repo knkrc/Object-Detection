@@ -127,8 +127,16 @@ docker compose up --build            # run in a container
   `app.py` itself. The requirements file pins `torch==...+cpu`, because the
   PyPI wheel pulls CUDA packages on Linux and a free Space cannot afford them —
   the same problem the Dockerfile solves with an index flag. `packages.txt`
-  carries the two apt packages opencv needs. The Dockerfile still stands for
-  local runs and self-hosting, and CI still builds and smoke-tests it.
+  carries the two apt packages opencv needs. `sdk_version` has to be set in the
+  frontmatter too; without it HF answers CONFIG_ERROR. streamlit is deliberately
+  absent from the Space requirements: HF installs the version named by
+  `sdk_version`, and pinning it twice invites a conflict. The Dockerfile still
+  stands for local runs and self-hosting, and CI still builds and smoke-tests it.
+- **The Space push has to keep `.gitattributes`.** HF rejects binary files that
+  are not in LFS ("use Xet storage"), and the LFS patterns live in that file.
+  Its defaults cover `*.pt` but not images, so `push_to_hf.sh` also runs
+  `git lfs track` for jpg/png/gif before staging — tracking after `git add`
+  is too late and the push bounces.
 - **Line crossings come from the sign of the cross product.** If the side of the
   line an object's centre is on flips between two frames, it has crossed; the
   direction of the flip separates in from out. No intersection maths needed.
