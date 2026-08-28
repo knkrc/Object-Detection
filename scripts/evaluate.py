@@ -57,7 +57,7 @@ def collect_metrics(metrics, names: dict[int, str]) -> dict:
     for i, class_index in enumerate(box.ap_class_index):
         per_class.append(
             {
-                "sinif": names[int(class_index)],
+                "class": names[int(class_index)],
                 "mAP50": round(float(box.ap50[i]), 4),
                 "mAP50-95": round(float(box.ap[i].mean()), 4),
                 "precision": round(float(box.p[i]), 4),
@@ -65,33 +65,33 @@ def collect_metrics(metrics, names: dict[int, str]) -> dict:
             }
         )
 
-    return {"genel": overall, "sinif_bazinda": per_class}
+    return {"overall": overall, "per_class": per_class}
 
 
 def as_markdown(model_name: str, data: str, results: dict) -> str:
     lines = [
-        f"# Egitim sonuclari — `{model_name}`",
+        f"# Training results — `{model_name}`",
         "",
-        f"Veri seti: `{data}`",
+        f"Dataset: `{data}`",
         "",
-        "## Genel",
+        "## Overall",
         "",
-        "| Metrik | Deger |",
+        "| Metric | Value |",
         "|---|---|",
     ]
-    for key, value in results["genel"].items():
+    for key, value in results["overall"].items():
         lines.append(f"| {key} | {value:.3f} |")
 
     lines += [
         "",
-        "## Sinif bazinda",
+        "## Per class",
         "",
-        "| Sinif | mAP50 | mAP50-95 | Precision | Recall |",
+        "| Class | mAP50 | mAP50-95 | Precision | Recall |",
         "|---|---|---|---|---|",
     ]
-    for row in results["sinif_bazinda"]:
+    for row in results["per_class"]:
         lines.append(
-            f"| {row['sinif']} | {row['mAP50']:.3f} | {row['mAP50-95']:.3f} "
+            f"| {row['class']} | {row['mAP50']:.3f} | {row['mAP50-95']:.3f} "
             f"| {row['precision']:.3f} | {row['recall']:.3f} |"
         )
 
@@ -118,7 +118,7 @@ def main() -> None:
 
     model_path = Path(args.model)
     if not model_path.exists():
-        raise SystemExit(f"Model bulunamadi: {model_path}\nOnce scripts/train.py calistir.")
+        raise SystemExit(f"Model not found: {model_path}\nRun scripts/train.py first.")
 
     model = YOLO(str(model_path))
     metrics = model.val(data=args.data, imgsz=args.imgsz, device=args.device, verbose=False)

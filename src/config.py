@@ -19,12 +19,15 @@ for _d in (MODELS_DIR, SAMPLES_DIR, OUTPUTS_DIR, DOCS_DIR):
 # Kullanilabilir modeller: isim -> agirlik dosyasi.
 # Ilk calistirmada ultralytics bu dosyalari otomatik indirir.
 AVAILABLE_MODELS = {
-    "YOLOv8n (hizli)": "yolov8n.pt",
-    "YOLOv8s (dengeli)": "yolov8s.pt",
-    "YOLOv8m (yavas, daha isabetli)": "yolov8m.pt",
+    "YOLOv8n (fast)": "yolov8n.pt",
+    "YOLOv8s (balanced)": "yolov8s.pt",
+    "YOLOv8m (slow, more accurate)": "yolov8m.pt",
 }
 
-DEFAULT_MODEL = "YOLOv8n (hizli)"
+DEFAULT_MODEL = "YOLOv8n (fast)"
+
+# Kendi egittigimiz modeller arayuzde bu onekle listeleniyor
+CUSTOM_PREFIX = "Custom: "
 
 
 def is_deployed() -> bool:
@@ -46,12 +49,12 @@ def is_deployed() -> bool:
 def custom_models() -> dict[str, str]:
     """models/ altindaki, hazir listede olmayan .pt dosyalari = kendi egittiklerimiz.
 
-    Arayuz bunlari "Ozel: <isim>" olarak model listesine ekler, boylece egitilen
-    her model otomatik olarak tum sekmelerde kullanilabilir hale gelir.
+    Arayuz bunlari "Custom: <isim>" olarak model listesine ekler, boylece
+    egitilen her model otomatik olarak tum sekmelerde kullanilabilir hale gelir.
     """
     builtin = set(AVAILABLE_MODELS.values())
     return {
-        f"Ozel: {path.stem}": path.name
+        f"{CUSTOM_PREFIX}{path.stem}": path.name
         for path in sorted(MODELS_DIR.glob("*.pt"))
         if path.name not in builtin
     }

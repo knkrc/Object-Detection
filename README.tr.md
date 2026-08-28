@@ -16,8 +16,8 @@ Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı 
 
 ![Demo](docs/demo.gif)
 
-*Örnek görselde tespit → sınıf filtresi (otobüs kutusu kayboluyor) → kendi
-eğittiğimiz modele geçiş → model performansı ve önce/sonra karşılaştırması.*
+*Örnek görselde tespit → sınıf filtresi (otobüs kutusu kayboluyor) → model
+performansı → kendi eğittiğimiz modele geçiş → önce/sonra karşılaştırması.*
 
 ---
 
@@ -30,11 +30,11 @@ eğittiğimiz modele geçiş → model performansı ve önce/sonra karşılaşt�
 | 📹 **Webcam** | Bilgisayar kamerasından canlı tespit |
 | 🖼️ **Örnekler** | Repoda hazır gelen görsellerle tek tıkla dene |
 | 🎯 **Takip** | ByteTrack ile kalıcı ID, benzersiz sayım, çizgi geçişi, hareket izi |
-| 🧠 **Kendi modelin** | Fine-tune edilmiş model, arayüzde "Özel:" olarak seçilebilir |
+| 🧠 **Kendi modelin** | Fine-tune edilmiş model, arayüzde "Custom:" olarak seçilebilir |
 | 📊 **Performans** | mAP tablosu, eğitim grafikleri, önce/sonra karşılaştırması |
 | ⚙️ **Ayarlar** | Model boyutu (n/s/m), güven eşiği ve sınıf filtresi |
 
-![Tespit sonucu](docs/screenshots/tespit.jpg)
+![Tespit sonucu](docs/screenshots/detection.jpg)
 
 ### Takip modu neler veriyor?
 
@@ -42,7 +42,7 @@ Video ve Webcam sekmelerindeki **Takip modu** anahtarı açıldığında:
 
 - **Benzersiz sayım** — aynı nesneyi iki kez saymadan "3 farklı insan, 1 otobüs"
 - **Çizgi geçiş sayımı** — ekrana sanal bir çizgi koy, geçenleri yönüyle say
-  (yatay çizgide `aşağı`/`yukarı`, dikey çizgide `sağa`/`sola`)
+  (yatay çizgide `down`/`up`, dikey çizgide `right`/`left`)
 - **Hareket izi** — her nesnenin son N karedeki yolu, ID'ye özel renkte
 - **Nesne başına süre** — hangi ID kaç saniye ekranda kaldı; CSV olarak indirilebilir
 
@@ -100,7 +100,7 @@ YOLOv8n, 30 epoch, 640px — MacBook'ta MPS ile **31 dakika**. Doğrulama seti: 
 
 Metrikler ve önce/sonra karşılaştırması uygulamanın içinde de duruyor:
 
-![Model performansı sekmesi](docs/screenshots/model-performansi.jpg)
+![Model performansı sekmesi](docs/screenshots/model-performance.jpg)
 
 <details>
 <summary>Eğitim grafikleri</summary>
@@ -111,7 +111,7 @@ Metrikler ve önce/sonra karşılaştırması uygulamanın içinde de duruyor:
 </details>
 
 Eğitilmiş model repoda (`models/african-wildlife.pt`, 5.9 MB) — klonlayıp
-arayüzde **"Özel: african-wildlife"** seçerek hemen deneyebilirsin.
+arayüzde **"Custom: african-wildlife"** seçerek hemen deneyebilirsin.
 
 ### Kendin eğitmek istersen
 
@@ -270,6 +270,7 @@ Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).
   ultralytics kurulumu kendi başlatmaya çalışır ama yeniden başlatma ister.
 - Webcam sekmesi macOS'ta kamera izni ister; izin verdikten sonra terminali
   yeniden başlatman gerekebilir.
+- **Uygulamanın arayüzü İngilizce.** Kod yorumları ve CLAUDE.md Türkçe.
 - Örnek görseller [Ultralytics](https://ultralytics.com)'in herkese açık demo görselleridir.
 
 ## Lisans

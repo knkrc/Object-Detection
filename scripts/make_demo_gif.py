@@ -45,7 +45,7 @@ def tour(page) -> None:
     etmesi gerekiyor, hizli gecen bir GIF hicbir sey anlatmiyor.
     """
     # 1. Ornek goruntude tespit: 3 insan + 1 otobus
-    open_tab(page, "Ornekler")
+    open_tab(page, "Samples")
     page.wait_for_timeout(2500)
 
     # 2. Sinif filtresi: sadece insan -> otobus kutusu kayboluyor.
@@ -71,12 +71,18 @@ def tour(page) -> None:
     page.keyboard.press("Escape")
     page.wait_for_timeout(2500)
 
-    # 4. Kendi egittigimiz modele gec -> kenar cubugu yesile doner, siniflar degisir
-    select_model(page, "Ozel: african-wildlife", settle=2500)
-    page.wait_for_timeout(2000)
+    # 4. Once metrik sekmesine gec, sonra modeli degistir.
+    #    Ters sirada yapinca yaban hayati modeli otobus fotografini yeniden
+    #    degerlendiriyor ve "elephant 0.43" gibi alan disi tespitler cikiyor —
+    #    dogru ama izleyene modelin kotu oldugunu dusundurten bir kare.
+    open_tab(page, "Model performance", settle=2000)
+    page.wait_for_timeout(1500)
 
-    # 5. Model performansi: metrikler ve once/sonra karsilastirmasi
-    open_tab(page, "Model performansi", settle=2000)
+    # 5. Kendi egittigimiz modele gec -> kenar cubugu yesile doner, siniflar degisir
+    select_model(page, "Custom: african-wildlife", settle=2500)
+    page.wait_for_timeout(2500)
+
+    # 6. Metrikler ve once/sonra karsilastirmasi
     for _ in range(6):
         page.mouse.wheel(0, 260)
         page.wait_for_timeout(380)
@@ -134,7 +140,7 @@ def warm_up(browser, url: str) -> None:
     page = context.new_page()
     page.goto(url)
     page.wait_for_timeout(5000)
-    select_model(page, "Ozel: african-wildlife")
+    select_model(page, "Custom: african-wildlife")
     context.close()
 
 
