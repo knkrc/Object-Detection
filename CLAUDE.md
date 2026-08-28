@@ -27,6 +27,7 @@ kod okunduğunda ne yaptığı anlaşılmalı.
 | OpenCV | Resim/video okuma-yazma, kare işleme |
 | Streamlit | Hızlı, görsel arayüz — portfolyoda ekran görüntüsü almak kolay |
 | MPS (Apple Silicon) | Eğitim burada dönüyor; Colab notebook'u GPU alternatifi |
+| pytest + ruff | Test ve lint; ikisi de `pyproject.toml`'da yapılandırılıyor |
 
 ## Komutlar
 
@@ -38,6 +39,11 @@ python scripts/download_samples.py   # örnek görselleri indir
 python scripts/train.py --epochs 30  # fine-tune (models/<isim>.pt üretir)
 python scripts/evaluate.py           # metrikler → docs/metrics.{json,md} + docs/plots/
 python scripts/compare.py            # önce/sonra görselleri → docs/comparison/
+
+pytest                               # tüm testler
+pytest -m "not slow"                 # hızlı olanlar (CI'ın koştuğu)
+pytest -m slow                       # gerçek modeli çalıştıranlar
+ruff check . && ruff format .        # lint + format
 ```
 
 ## Mimari kararlar
@@ -72,6 +78,14 @@ python scripts/compare.py            # önce/sonra görselleri → docs/comparis
 - **Metrikler ve grafikler `docs/` altında commit'leniyor.** `runs/` git'e
   girmiyor; `evaluate.py` gösterilmeye değer grafikleri `docs/plots/`'a
   kopyalıyor. README ve Streamlit sekmesi aynı dosyaları okuyor.
+- **Testler `slow` işaretiyle ikiye ayrılıyor.** Hızlı olanlar `tests/conftest.py`
+  içindeki sahte model katmanını kullanıyor: `FakeModel.track()` ultralytics
+  çıktısının yalnızca `TrackSession`'ın dokunduğu kadarını taklit ediyor.
+  Bu sayede takip mantığı torch'a hiç dokunmadan test ediliyor ve CI dakikalar
+  yerine saniyeler sürüyor. Gerçek modelle çalışanlar `slow` işaretli.
+- **`pythonpath = ["."]` pytest yapılandırmasında şart.** CI `pytest` komutunu
+  doğrudan çağırıyor; `python -m pytest`ten farklı olarak çalışma dizinini
+  `sys.path`'e eklemiyor ve `import src` patlıyor.
 - **Çizgi geçişi vektörel çarpımın işaretiyle bulunur.** Nesne merkezinin
   çizgiye göre tarafı iki kare arasında değiştiyse geçmiştir; işaretin yönü de
   giriş/çıkış ayrımını verir. Kesişim hesabı yapmaya gerek yok.
@@ -223,14 +237,52 @@ diyor. Elephant ve zebra'da ikisi de doğru — beklenen, çünkü bunlar COCO'd
 
 ---
 
+### ✅ M4 — Testler + CI (2026-08-28)
+
+**Yapılanlar**
+- `tests/conftest.py` — sahte model katmanı (`FakeModel`, `FakeResult`, `FakeBox`,
+  `FakeDetector`) ve sentetik video fixture'ı. Ultralytics çıktısının sadece
+  `TrackSession`'ın kullandığı kadarı taklit ediliyor.
+- `tests/test_tracker.py` (26 test) — çizgi sayacı yön mantığı, ilk görülmede
+  saymama, aynı tarafta kalınca saymama, gidip gelme, çizgi üstündeki nokta;
+  `TrackSession` benzersiz sayım, süre, iz uzunluğu, sınıf filtresi, reset.
+- `tests/test_video.py` (10 test) — kare sayısı, stride davranışı (atlanan
+  karelerin son çizilmiş kareyle doldurulması dahil), ilerleme callback'i,
+  hatalı dosya.
+- `tests/test_config.py` (8 test) — `custom_models()` keşfi ve hazır modelleri
+  dışarıda bırakması.
+- `tests/test_detector.py` (11 test, 7'si `slow`) — `summarize()` mantığı hızlı;
+  gerçek modelle sınıf sayısı, tespit, filtre, eşik davranışı `slow`.
+- `pyproject.toml` — pytest (marker, testpaths, pythonpath) ve ruff (E/F/I/B/UP,
+  100 karakter) yapılandırması.
+- `.github/workflows/ci.yml` — ruff işi + Python 3.11/3.12/3.13 test matrisi.
+- `requirements-dev.txt`, README'ye CI rozeti ve test bölümü.
+
+**Sonuç:** 55 test, hızlı paket 0.7 sn'de koşuyor, `src/` kapsamı **%91**
+(tracker %98, video %95, config %100). `detector` %54 — model gerektiren
+kısımları yalnızca `slow` testlerde.
+
+**Yol boyunca düzeltilen**
+- CI `pytest`i doğrudan çağırıyordu ve `import src` patlıyordu; `python -m pytest`
+  çalışma dizinini `sys.path`'e eklediği için yerelde sorun görünmüyordu.
+  `pythonpath = ["."]` eklendi — yerelde bare `pytest` ile doğrulandı.
+- Ruff 15 sorun buldu (import sırası, uzun satırlar, `%` formatı); 9'u otomatik,
+  kalanı elle düzeltildi. 9 dosya yeniden formatlandı.
+
+**Bilinen eksikler / notlar**
+- CI'da her iş `torch`u CPU deposundan kuruyor (PyPI sürümü Linux'ta CUDA
+  paketlerini de çekiyor, ~2.5 GB). Yine de kurulum işin çoğu zamanını alıyor.
+- `app.py` test edilmiyor. Streamlit arayüzünü test etmek `streamlit.testing`
+  gerektirir; şimdilik değmez, arayüz elle doğrulanıyor.
+- `scripts/` altındaki eğitim hattı test edilmiyor — gerçek eğitim gerektirdiği
+  için CI'a uygun değil.
+- Coverage rozeti yok, sadece CI çıktısında görünüyor. İstenirse Codecov eklenebilir.
+
+---
+
 ## Sıradaki milestone'lar
 
-### 🔜 M4 — Testler + CI
-`pytest` ile `Detector` ve `video.py` için birkaç anlamlı test
-(örn. bilinen görselde beklenen sınıflar bulunuyor mu). GitHub Actions ile
-her push'ta çalışsın.
-
-### 📋 M5 — Dağıtım
+### 🔜 M5 — Dağıtım
 Dockerfile + Hugging Face Spaces veya Streamlit Cloud'da canlı demo.
 README'ye "Live Demo" rozeti — işe alım yapan kişi kodu indirmeden deneyebilsin.
 
@@ -242,4 +294,6 @@ README'ye "Live Demo" rozeti — işe alım yapan kişi kodu indirmeden deneyebi
 - İngilizce README (uluslararası başvurular için).
 - Kendi topladığın görsellerle ikinci bir veri seti (M3 altyapısı hazır).
 - Daha büyük model (`yolov8s/m`) ile eğitim ve karşılaştırma.
+- `streamlit.testing` ile arayüz testleri.
+- Codecov entegrasyonu ve kapsam rozeti.
 - Model karşılaştırma sekmesi: aynı görselde n/s/m sonuçları yan yana.

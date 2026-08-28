@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install ruff
+      - name: ruff check
+        run: ruff check .
+      - name: ruff format
+        run: ruff format --check .
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # opencv'nin ihtiyac duydugu sistem kutuphaneleri (headless ortamda yok)
+      - name: Sistem bagimliliklari
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
+      # PyPI'daki torch, Linux'ta CUDA paketlerini de cekiyor (~2.5 GB).
+      # CPU deposundan kurmak indirmeyi ciddi olcude kucultuyor.
+      - name: torch (CPU)
+        run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Bagimliliklar
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      # Gercek modeli indirip calistiran testler `slow` isaretli; CI'da atlanir,
+      # yerelde `pytest -m slow` ile calistirilir.
+      - name: Testler
+        run: pytest -m "not slow" --cov=src --cov-report=term-missing

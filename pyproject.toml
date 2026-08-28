@@ -1,0 +1,24 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+# `pytest` dogrudan cagrildiginda (CI'da oldugu gibi) calisma dizini sys.path'e
+# eklenmiyor; `python -m pytest`ten farki bu. Acikca ekliyoruz ki `import src`
+# her iki cagrim seklinde de calissin.
+pythonpath = ["."]
+markers = [
+    "slow: gercek modeli indirip calistiran testler (CI'da atlanir, yerelde: pytest -m slow)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/F: temel hatalar, I: import sirasi, B: yaygin tuzaklar, UP: eski sozdizimi
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Streamlit uygulamasi tepeden asagi calisir; modul seviyesinde kod normal.
+"app.py" = ["E402"]
+# Scriptler sys.path'i ayarladiktan sonra import ediyor.
+"scripts/*.py" = ["E402"]

@@ -28,3 +28,8 @@ outputs/
 # Egitim
 datasets/
 runs/
+
+# Test artefaktlari
+.coverage
+.pytest_cache/
+htmlcov/

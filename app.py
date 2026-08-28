@@ -17,11 +17,11 @@ import streamlit as st
 from src.config import (
     AVAILABLE_MODELS,
     DEFAULT_CONF,
-    DOCS_DIR,
     DEFAULT_FRAME_STRIDE,
     DEFAULT_LINE_POSITION,
     DEFAULT_MODEL,
     DEFAULT_TRAIL_LENGTH,
+    DOCS_DIR,
     IMAGE_TYPES,
     OUTPUTS_DIR,
     SAMPLES_DIR,
@@ -112,18 +112,30 @@ def tracking_controls(key: str) -> dict:
     with left:
         trails = st.checkbox("Hareket izi ciz", value=True, key=f"{key}_trails")
         trail_length = st.slider(
-            "Iz uzunlugu (kare)", 8, 96, DEFAULT_TRAIL_LENGTH, key=f"{key}_trail_len",
+            "Iz uzunlugu (kare)",
+            8,
+            96,
+            DEFAULT_TRAIL_LENGTH,
+            key=f"{key}_trail_len",
             disabled=not trails,
         )
     with right:
         line_on = st.checkbox("Cizgi gecis sayimi", value=False, key=f"{key}_line")
         orientation = st.radio(
-            "Cizgi yonu", ["yatay", "dikey"], horizontal=True,
-            key=f"{key}_orient", disabled=not line_on,
+            "Cizgi yonu",
+            ["yatay", "dikey"],
+            horizontal=True,
+            key=f"{key}_orient",
+            disabled=not line_on,
         )
         position = st.slider(
-            "Cizgi konumu", 0.05, 0.95, DEFAULT_LINE_POSITION, step=0.05,
-            key=f"{key}_pos", disabled=not line_on,
+            "Cizgi konumu",
+            0.05,
+            0.95,
+            DEFAULT_LINE_POSITION,
+            step=0.05,
+            key=f"{key}_pos",
+            disabled=not line_on,
         )
 
     return {
@@ -232,9 +244,7 @@ if is_custom:
     st.sidebar.success("Kendi egittigimiz model kullaniliyor.")
     st.sidebar.caption("Siniflar: " + ", ".join(detector.class_names))
 elif not own_models:
-    st.sidebar.caption(
-        "Kendi modelini egitmek icin: `python scripts/train.py`"
-    )
+    st.sidebar.caption("Kendi modelini egitmek icin: `python scripts/train.py`")
 
 # --------------------------------------------------------------------------
 # Ana sayfa
@@ -291,7 +301,10 @@ with tab_video:
             if track_options["enabled"]:
                 # Kare atlanirsa sure hesabi icin efektif fps kullanilir.
                 session = build_session(
-                    detector, track_options, conf, keep_classes,
+                    detector,
+                    track_options,
+                    conf,
+                    keep_classes,
                     fps=info["fps"] / stride,
                     size=(info["width"], info["height"]),
                 )
@@ -370,7 +383,10 @@ with tab_webcam:
             height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
             live_session = (
                 build_session(
-                    detector, webcam_options, conf, keep_classes,
+                    detector,
+                    webcam_options,
+                    conf,
+                    keep_classes,
                     fps=capture.get(cv2.CAP_PROP_FPS) or 25.0,
                     size=(width, height),
                 )
@@ -437,29 +453,38 @@ with tab_metrics:
 
         overall = metrics["genel"]
         cols = st.columns(4)
-        cols[0].metric("mAP50", f"{overall['mAP50']:.3f}",
-                       help="Kutu ortusmesi %50 esiginde ortalama isabet. Ana basari olcusu.")
-        cols[1].metric("mAP50-95", f"{overall['mAP50-95']:.3f}",
-                       help="%50'den %95'e kadar farkli esiklerin ortalamasi. Daha zorlu olcu.")
-        cols[2].metric("Precision", f"{overall['precision']:.3f}",
-                       help="Bulduklarinin ne kadari dogruydu.")
-        cols[3].metric("Recall", f"{overall['recall']:.3f}",
-                       help="Olmasi gerekenlerin ne kadarini buldu.")
+        cols[0].metric(
+            "mAP50",
+            f"{overall['mAP50']:.3f}",
+            help="Kutu ortusmesi %50 esiginde ortalama isabet. Ana basari olcusu.",
+        )
+        cols[1].metric(
+            "mAP50-95",
+            f"{overall['mAP50-95']:.3f}",
+            help="%50'den %95'e kadar farkli esiklerin ortalamasi. Daha zorlu olcu.",
+        )
+        cols[2].metric(
+            "Precision", f"{overall['precision']:.3f}", help="Bulduklarinin ne kadari dogruydu."
+        )
+        cols[3].metric(
+            "Recall", f"{overall['recall']:.3f}", help="Olmasi gerekenlerin ne kadarini buldu."
+        )
 
         st.write("**Sinif bazinda**")
         st.dataframe(metrics["sinif_bazinda"], use_container_width=True, hide_index=True)
 
-        comparisons = sorted((DOCS_DIR / "comparison").glob("*.jpg")) \
-            if (DOCS_DIR / "comparison").exists() else []
+        comparisons = (
+            sorted((DOCS_DIR / "comparison").glob("*.jpg"))
+            if (DOCS_DIR / "comparison").exists()
+            else []
+        )
         summary_image = next((p for p in comparisons if p.stem == "ozet"), None)
         singles = [p for p in comparisons if p.stem != "ozet"]
 
         if singles:
             st.divider()
             st.subheader("Once / sonra")
-            st.caption(
-                "Solda hazir COCO modeli, sagda kendi egittigimiz model — ayni goruntude."
-            )
+            st.caption("Solda hazir COCO modeli, sagda kendi egittigimiz model — ayni goruntude.")
             choice = st.selectbox(
                 "Gorsel sec", singles, format_func=lambda p: p.stem, key="compare_pick"
             )

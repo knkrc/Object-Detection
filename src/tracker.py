@@ -93,8 +93,13 @@ class LineCounter:
         cv2.line(frame, self.p1, self.p2, (0, 255, 255), 2)
         label = "  ".join(f"{name}: {count}" for name, count in self.counts.items())
         cv2.putText(
-            frame, label, (self.p1[0], max(self.p1[1] - 10, 20)),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2,
+            frame,
+            label,
+            (self.p1[0], max(self.p1[1] - 10, 20)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2,
         )
 
 
@@ -249,9 +254,7 @@ class TrackSession:
         }
 
 
-def line_from_ratio(
-    width: int, height: int, orientation: str, position: float
-) -> LineCounter:
+def line_from_ratio(width: int, height: int, orientation: str, position: float) -> LineCounter:
     """Arayuzdeki 'yatay/dikey + %konum' secimini piksel koordinatlarina cevirir."""
     if orientation == "yatay":
         # Soldan saga cizilen cizgide pozitif taraf asagisi olur.
