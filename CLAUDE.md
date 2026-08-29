@@ -465,6 +465,14 @@ tests") — this is a log, and later entries record how those figures changed.
 
 ## Upcoming
 
+### ⚠️ `packages.txt` takes no comments
+Streamlit Community Cloud passes that file to `apt-get` word by word, so a `#`
+comment makes it try to install every word in it — the first deploy died with
+`Unable to locate package Streamlit`, `... package Community`, and so on down
+the sentence. Keep it to bare package names, one per line. The Dockerfile
+installs the same two packages and does allow comments, so the two files look
+deceptively similar.
+
 ### 🔜 Next step — publish on Streamlit Community Cloud
 Sign in at share.streamlit.io with GitHub, create an app from this repo
 (branch `main`, main file `app.py`), and put the resulting URL in both READMEs.

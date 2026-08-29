@@ -247,7 +247,9 @@ The platform reads [`requirements.txt`](requirements.txt) and
 [`packages.txt`](packages.txt) from the repo root. `requirements.txt` pins the
 `+cpu` torch build on Linux — the PyPI wheel drags in CUDA packages a free tier
 cannot afford — while macOS keeps the ordinary wheel through a platform marker.
-`packages.txt` carries the two apt packages opencv needs.
+`packages.txt` carries the two apt packages opencv needs — and nothing else:
+Streamlit Community Cloud feeds that file to `apt-get` word by word, so a
+comment line makes it try to install every word in the comment.
 
 ### Hugging Face Spaces
 
