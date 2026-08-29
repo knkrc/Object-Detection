@@ -243,7 +243,9 @@ Platform repo kökündeki [`requirements.txt`](requirements.txt) ve
 torch'un `+cpu` sürümünü sabitliyor — PyPI tekerleği ücretsiz katmanın
 kaldıramayacağı CUDA paketlerini çekiyor — macOS ise platform işaretleyicisiyle
 normal tekerleği almaya devam ediyor. `packages.txt` opencv'nin ihtiyaç duyduğu
-iki apt paketini taşıyor.
+iki apt paketini taşıyor — başka hiçbir şey değil: Streamlit Community Cloud o
+dosyayı `apt-get`'e kelime kelime veriyor, yorum satırı koyarsan yorumdaki her
+kelimeyi paket sanıp kurmaya çalışıyor.
 
 ### Hugging Face Spaces
 

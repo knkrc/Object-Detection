@@ -1,5 +1,2 @@
-# apt packages installed before pip by Streamlit Community Cloud (and by any
-# other host that reads this file). opencv needs them on a headless Linux box;
-# the Dockerfile installs the same two.
 libgl1
 libglib2.0-0
