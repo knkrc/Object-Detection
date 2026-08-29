@@ -29,6 +29,10 @@ DEFAULT_MODEL = "YOLOv8n (fast)"
 # Models we trained ourselves are listed in the UI under this prefix
 CUSTOM_PREFIX = "Custom: "
 
+# Streamlit Community Cloud checks the repo out here and gives us no env var to
+# detect it by, so the path is the only signal available.
+STREAMLIT_CLOUD_ROOT = "/mount/src"
+
 
 def is_deployed() -> bool:
     """Is the app running on a server?
@@ -38,12 +42,16 @@ def is_deployed() -> bool:
     on a server it would be the server's camera (if any) — useless to a visitor.
     So we hide that tab when deployed.
 
-    `DEPLOYED` is set in the Dockerfile; `SPACE_ID` is added by Hugging Face
-    Spaces itself.
+    Three signals, because each host announces itself differently:
+    `DEPLOYED` is set in our Dockerfile, `SPACE_ID` is added by Hugging Face
+    Spaces, and Streamlit Community Cloud sets nothing at all — there we go by
+    the path it runs apps from (`/mount/src/<repo>`).
     """
     if os.getenv("DEPLOYED", "").strip().lower() in {"1", "true", "yes"}:
         return True
-    return bool(os.getenv("SPACE_ID"))
+    if os.getenv("SPACE_ID"):
+        return True
+    return str(ROOT).startswith(STREAMLIT_CLOUD_ROOT)
 
 
 def custom_models() -> dict[str, str]:

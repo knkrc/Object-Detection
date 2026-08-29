@@ -291,7 +291,8 @@ See [CLAUDE.md](CLAUDE.md) for details and notes from each milestone.
 - Tracking needs the `lap` package (it is in `requirements.txt`); without it
   ultralytics tries to install it itself but then asks for a restart.
 - The webcam tab asks for camera permission on macOS; you may need to restart your
-  terminal after granting it.
+  terminal after granting it. It is hidden automatically when the app runs on a
+  server — see [Why there is no webcam tab on the server](#why-there-is-no-webcam-tab-on-the-server).
 - The project is in English throughout — interface, comments, tests,
   infrastructure files and `CLAUDE.md`. `README.tr.md` is the one exception, kept
   as a Turkish translation of this page.
