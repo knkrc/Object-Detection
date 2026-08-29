@@ -242,10 +242,10 @@ Platform repo kökündeki [`requirements.txt`](requirements.txt) ve
 [`packages.txt`](packages.txt) dosyalarını okuyor. `requirements.txt` Linux'ta
 torch'un `+cpu` sürümünü sabitliyor — PyPI tekerleği ücretsiz katmanın
 kaldıramayacağı CUDA paketlerini çekiyor — macOS ise platform işaretleyicisiyle
-normal tekerleği almaya devam ediyor. `packages.txt` opencv'nin ihtiyaç duyduğu
-iki apt paketini taşıyor — başka hiçbir şey değil: Streamlit Community Cloud o
-dosyayı `apt-get`'e kelime kelime veriyor, yorum satırı koyarsan yorumdaki her
-kelimeyi paket sanıp kurmaya çalışıyor.
+normal tekerleği almaya devam ediyor. `packages.txt` opencv'nin olmazsa olmaz tek apt
+paketini taşıyor — başka hiçbir şey değil. Community Cloud o dosyayı `apt-get`'e
+kelime kelime veriyor: yorum satırı koyarsan yorumdaki her kelimeyi paket sanıyor,
+gereğinden fazla paket istersen de imajın karışık apt kaynaklarına tosluyorsun.
 
 ### Hugging Face Spaces
 
