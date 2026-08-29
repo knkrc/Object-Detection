@@ -1,6 +1,16 @@
 # Main dependencies. Install with:
 #   python -m venv .venv && source .venv/bin/activate
 #   pip install -r requirements.txt
+#
+# torch is pinned per platform. On Linux the PyPI wheel drags in CUDA packages
+# (~2.5 GB), which neither Streamlit Community Cloud nor a free Hugging Face
+# Space can afford; the +cpu build lives on PyTorch's own index. On macOS the
+# PyPI wheel is already CPU-only and no +cpu variant exists.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.13.0+cpu; sys_platform == "linux"
+torchvision==0.28.0+cpu; sys_platform == "linux"
+torch==2.13.0; sys_platform != "linux"
+torchvision==0.28.0; sys_platform != "linux"
 
 ultralytics>=8.3        # YOLOv8 model (brings torch, torchvision and opencv)
 streamlit>=1.40         # web interface

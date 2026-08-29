@@ -6,9 +6,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
-[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc26/object-detection)
-
-> 🚀 **[Try the live demo](https://huggingface.co/spaces/knkrc26/object-detection)** — running on Hugging Face Spaces.
+> 🚀 *Live demo: deploy on [Streamlit Community Cloud](https://share.streamlit.io)
+> and put the link here.*
 
 A Streamlit app for **object detection and tracking** on images, video and a live
 camera, built on YOLOv8. The pretrained COCO model recognises **80 object classes** —
@@ -236,29 +235,37 @@ a Hugging Face Spaces requirement.
 
 ## Publishing a live demo
 
-To push to Hugging Face Spaces:
+### Streamlit Community Cloud
 
-1. Create an account at [huggingface.co](https://huggingface.co) and a new Space.
-   Pick any SDK on the form — `deploy/space-README.md` sets it to `streamlit`,
-   which is what the app needs. (HF only offers Docker Spaces on a paid plan.)
-2. Generate a [token with write access](https://huggingface.co/settings/tokens)
-3. Push:
+The app is a Streamlit app, so its natural home needs no extra configuration:
+
+1. Sign in at [share.streamlit.io](https://share.streamlit.io) with GitHub
+2. **Create app** → pick this repository, branch `main`, main file `app.py`
+3. Deploy
+
+The platform reads [`requirements.txt`](requirements.txt) and
+[`packages.txt`](packages.txt) from the repo root. `requirements.txt` pins the
+`+cpu` torch build on Linux — the PyPI wheel drags in CUDA packages a free tier
+cannot afford — while macOS keeps the ordinary wheel through a platform marker.
+`packages.txt` carries the two apt packages opencv needs.
+
+### Hugging Face Spaces
+
+[`deploy/push_to_hf.sh`](deploy/push_to_hf.sh) also works — it clones the Space,
+copies only what the app needs (training scripts, tests and datasets are left
+out) and pushes:
 
 ```bash
 export HF_TOKEN=hf_...
 ./deploy/push_to_hf.sh <your-username>/<space-name>
 ```
 
-The script clones the Space, copies only what the app needs to run (training
-scripts, tests and datasets are left out), takes the Space's own README from
-[`deploy/space-README.md`](deploy/space-README.md) and pushes.
-
-The Space runs on the **Streamlit SDK**, so the Dockerfile is not pushed — HF
-installs [`deploy/space-requirements.txt`](deploy/space-requirements.txt) and
-[`deploy/space-packages.txt`](deploy/space-packages.txt) and runs `app.py`
-itself. That requirements file pins the `+cpu` torch build: on Linux the PyPI
-wheel drags in CUDA packages a free Space cannot afford. The Dockerfile is still
-what you want for running locally or self-hosting.
+One caveat that cost us an afternoon: HF offers Docker Spaces only on a paid
+plan, and its Space creation form no longer lists Streamlit, so it defaults to
+Gradio with **ZeroGPU** hardware. ZeroGPU works only with the Gradio SDK, and a
+free account cannot switch a Space down to CPU basic afterwards. Create the
+Space with CPU basic hardware from the start, or the build stops at
+`CONFIG_ERROR`.
 
 ### Why there is no webcam tab on the server
 

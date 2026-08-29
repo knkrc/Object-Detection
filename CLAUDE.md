@@ -463,20 +463,25 @@ tests") — this is a log, and later entries record how those figures changed.
 
 ## Upcoming
 
-### 🔜 Next step — get the demo actually running
-The README links to `knkrc26/object-detection`, but the Space is not up yet.
-What is left:
+### 🔜 Next step — publish on Streamlit Community Cloud
+Sign in at share.streamlit.io with GitHub, create an app from this repo
+(branch `main`, main file `app.py`), and put the resulting URL in both READMEs.
+The repo root already carries what the platform reads: `requirements.txt` with
+the platform-marked torch pins and `packages.txt` with opencv's apt packages.
 
-1. **Create the Space** as public. Any SDK on the form will do — the push
-   overwrites README.md with `sdk: streamlit`. Docker is paid, hence the switch.
-2. **Push** — set `HF_TOKEN` and run
-   `./deploy/push_to_hf.sh knkrc26/object-detection`. The first build takes a few
-   minutes.
-3. **Watch the build.** The `sdk: streamlit` route is the untested part: HF
-   dropped Streamlit from the Space creation form, but the backend still serves
-   Spaces declaring it, so setting it in frontmatter should work. If the build
-   refuses the SDK, the fallbacks are Streamlit Community Cloud (free, native
-   Streamlit) or writing a Gradio front end against the existing `src/` modules.
+**Why not Hugging Face.** We got the whole pipeline working there — the push
+succeeds, `sdk: streamlit` is accepted, 16 MB of LFS objects upload — and then
+hit a wall that has nothing to do with our code:
+
+- HF offers Docker Spaces only on a paid plan.
+- Its Space creation form no longer lists Streamlit, so a new Space defaults to
+  Gradio with **ZeroGPU** hardware.
+- ZeroGPU works only with the Gradio SDK, so the Space sits at `CONFIG_ERROR`.
+- A free account cannot switch a Space *down* to CPU basic: both the API and the
+  UI answer "Without a PRO subscription, you can't downgrade this Space".
+
+`deploy/push_to_hf.sh` and the Space files are kept and still work; the fix is
+to create the Space with CPU basic hardware from the start.
 
 **Note on the username:** HF is `knkrc26`, GitHub is `knkrc`. The README linked
 the GitHub name for a while and every visitor got a 401.
