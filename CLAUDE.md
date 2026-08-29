@@ -111,7 +111,9 @@ docker compose up --build            # run in a container
   opens the camera of *whichever machine is running the app*; on a server that
   would be the server's camera, not the visitor's. The tab is not even created —
   the block sits under `if show_webcam:`, otherwise its widgets would leak onto
-  the main page.
+  the main page. Three signals, because every host announces itself differently:
+  `DEPLOYED` (our Dockerfile), `SPACE_ID` (Hugging Face), and the `/mount/src`
+  checkout path (Streamlit Community Cloud, which sets no env var at all).
 - **The Docker image is self-contained.** Model weights, samples and metrics are
   copied in; the container downloads nothing on first start. torch is installed
   from the CPU index (the PyPI build pulls CUDA packages on Linux).

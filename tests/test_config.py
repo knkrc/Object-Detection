@@ -5,6 +5,8 @@ into models/ must show up in the model list, and built-in models must not be
 listed a second time under "Custom:".
 """
 
+from pathlib import Path
+
 import src.config as config
 from src.config import AVAILABLE_MODELS, DEFAULT_MODEL, IMAGE_TYPES, VIDEO_TYPES, is_deployed
 
@@ -93,5 +95,20 @@ def test_deployed_empty_or_zero_means_local(monkeypatch):
 def test_hugging_face_space_id_is_enough(monkeypatch):
     """HF Spaces sets this itself, so we need not rely on the Dockerfile."""
     monkeypatch.delenv("DEPLOYED", raising=False)
-    monkeypatch.setenv("SPACE_ID", "knkrc/object-detection")
+    monkeypatch.setenv("SPACE_ID", "knkrc26/object-detection")
     assert is_deployed() is True
+
+
+def test_streamlit_cloud_path_is_enough(monkeypatch):
+    """Community Cloud sets no env var; the checkout path is the only signal."""
+    monkeypatch.delenv("DEPLOYED", raising=False)
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    monkeypatch.setattr(config, "ROOT", Path("/mount/src/object-detection"))
+    assert is_deployed() is True
+
+
+def test_ordinary_path_is_not_deployed(monkeypatch):
+    monkeypatch.delenv("DEPLOYED", raising=False)
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    monkeypatch.setattr(config, "ROOT", Path("/Users/kaan/Desktop/Object-Detection"))
+    assert is_deployed() is False
