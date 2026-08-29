@@ -476,13 +476,17 @@ the sentence. Keep it to bare package names, one per line. The Dockerfile
 installs similar packages and *does* allow comments, so the two files look
 deceptively alike.
 
-**Keep it as short as possible.** The base image mixes apt sources (trixie plus
-bullseye), so asking for `libglib2.0-0` pulled the bullseye version, which wants
-`libffi7` and `libpcre3` — neither installable there. Debian renamed that
-package to `libglib2.0-0t64` anyway. glib is already in the image, so the file
-lists only `libgl1`, which is what opencv actually cannot find on its own.
-`opencv-python-headless` would drop even that, but ultralytics depends on
-`opencv-python` by name, so both would end up installed.
+**Use the package names of the distribution in the image.** Its apt sources mix
+trixie and bullseye, so plain `libglib2.0-0` resolved to the bullseye version,
+which wants `libffi7` and `libpcre3` — neither installable there. Debian renamed
+the package to `libglib2.0-0t64` in the time_t transition, and that name pulls
+the trixie build whose dependencies are present.
+
+opencv needs both entries: `libgl1` for `libGL.so.1` and `libglib2.0-0t64` for
+`libgthread-2.0.so.0`. Dropping the latter got the build through apt and then
+failed at `import cv2` instead. `opencv-python-headless` would need neither, but
+ultralytics depends on `opencv-python` by name, so both would end up installed
+and which one provides `cv2` becomes a coin toss.
 
 ### 🔜 Next step — publish on Streamlit Community Cloud
 Sign in at share.streamlit.io with GitHub, create an app from this repo
