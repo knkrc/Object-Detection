@@ -6,9 +6,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
-[![HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-blue)](https://huggingface.co/spaces/knkrc26/object-detection)
-
-> 🚀 **[Canlı demoyu dene](https://huggingface.co/spaces/knkrc26/object-detection)** — Hugging Face Spaces üzerinde çalışıyor.
+> 🚀 *Canlı demo: [Streamlit Community Cloud](https://share.streamlit.io)'a
+> deploy edip linki buraya ekle.*
 
 YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
 COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
@@ -231,28 +230,36 @@ bir pratik hem de Hugging Face Spaces'in gereği.
 
 Hugging Face Spaces'e göndermek için:
 
-1. [huggingface.co](https://huggingface.co)'da hesap aç ve bir Space oluştur.
-   Formda hangi SDK'yı seçtiğin önemli değil — `deploy/space-README.md` onu
-   `streamlit` yapıyor. (HF, Docker Space'i sadece ücretli planda veriyor.)
-2. [Write yetkili bir token](https://huggingface.co/settings/tokens) üret
-3. Gönder:
+### Streamlit Community Cloud
+
+Uygulama zaten Streamlit; kendi platformunda hiçbir ek yapılandırma istemiyor:
+
+1. [share.streamlit.io](https://share.streamlit.io)'da GitHub ile giriş yap
+2. **Create app** → bu repoyu seç, branch `main`, ana dosya `app.py`
+3. Deploy
+
+Platform repo kökündeki [`requirements.txt`](requirements.txt) ve
+[`packages.txt`](packages.txt) dosyalarını okuyor. `requirements.txt` Linux'ta
+torch'un `+cpu` sürümünü sabitliyor — PyPI tekerleği ücretsiz katmanın
+kaldıramayacağı CUDA paketlerini çekiyor — macOS ise platform işaretleyicisiyle
+normal tekerleği almaya devam ediyor. `packages.txt` opencv'nin ihtiyaç duyduğu
+iki apt paketini taşıyor.
+
+### Hugging Face Spaces
+
+[`deploy/push_to_hf.sh`](deploy/push_to_hf.sh) da çalışıyor — Space'i klonluyor,
+uygulamanın çalışması için gerekenleri kopyalıyor ve push ediyor:
 
 ```bash
 export HF_TOKEN=hf_...
 ./deploy/push_to_hf.sh <kullanıcı-adın>/<space-adı>
 ```
 
-Script Space'i klonluyor, uygulamanın çalışması için gereken dosyaları kopyalıyor
-(eğitim scriptleri, testler ve veri setleri gitmiyor), Space'in kendi README'sini
-[`deploy/space-README.md`](deploy/space-README.md)'den alıp push ediyor.
-
-Space **Streamlit SDK** ile çalışıyor, yani Dockerfile gönderilmiyor — HF
-[`deploy/space-requirements.txt`](deploy/space-requirements.txt) ve
-[`deploy/space-packages.txt`](deploy/space-packages.txt) dosyalarını kurup
-`app.py`'yi kendisi çalıştırıyor. O requirements dosyası torch'un `+cpu`
-sürümünü sabitliyor: Linux'ta PyPI tekerleği ücretsiz bir Space'in kaldıramayacağı
-CUDA paketlerini de çekiyor. Dockerfile yerel çalıştırma ve self-hosting için
-hâlâ geçerli.
+Bize bir öğleden sonraya mal olan detay: HF, Docker Space'i sadece ücretli planda
+veriyor ve Space oluşturma formunda artık Streamlit yok — varsayılan Gradio +
+**ZeroGPU** oluyor. ZeroGPU yalnızca Gradio SDK ile çalışıyor ve ücretsiz bir
+hesap Space'i sonradan CPU basic'e düşüremiyor. Space'i baştan CPU basic
+donanımıyla oluştur, yoksa derleme `CONFIG_ERROR`'da kalıyor.
 
 ### Sunucuda webcam neden yok?
 
