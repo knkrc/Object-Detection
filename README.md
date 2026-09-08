@@ -35,6 +35,7 @@ model performance metrics → switching to our fine-tuned model → before/after
 | 📊 **Performance** | mAP tables, training curves, before/after comparison |
 | ⚙️ **Settings** | Model size (n/s/m), confidence threshold, class filter |
 | ⌨️ **CLI** | `detect.py` for batch runs and JSON output |
+| ⏱️ **Benchmark** | Speed per model and device, measured not guessed |
 
 ![Detection result](docs/screenshots/detection.jpg)
 
@@ -192,6 +193,38 @@ counts, line crossings and how long each ID stayed on screen:
 
 `python detect.py --help` lists the rest.
 
+---
+
+## How fast is it?
+
+Measured with [`scripts/benchmark.py`](scripts/benchmark.py) on an Apple Silicon
+Mac. The timings cover `Detector.detect()` end to end — inference *and* drawing
+the boxes, which is the wait a user actually sees.
+
+| Model | MPS | CPU |
+|---|---|---|
+| YOLOv8n | 9.3 ms · 107 FPS | 25.5 ms · 39 FPS |
+| YOLOv8s | 15.6 ms · 64 FPS | 50.0 ms · 20 FPS |
+| YOLOv8m | 29.9 ms · 33 FPS | 106.9 ms · 9 FPS |
+
+Each step up in model size roughly doubles the cost, and MPS is about 3-4x
+faster than CPU throughout. Two things follow:
+
+- **The hosted demo runs on CPU**, so YOLOv8n at ~39 FPS keeps it responsive
+  while YOLOv8m at ~9 FPS would not. That is why n is the default.
+- **Tracking costs about 20% on top of detection** — 12.4 ms/frame against
+  10.4 on the same clip. The association work is cheap next to the model.
+
+```bash
+python scripts/benchmark.py                        # every model, every device
+python scripts/benchmark.py --models yolov8n.pt --devices cpu
+python scripts/benchmark.py --markdown docs/benchmark.md
+```
+
+The median of 20 runs is reported rather than the mean, after 3 warm-up runs
+that are thrown away — the first call through a device pays for lazy
+initialisation and would otherwise dominate.
+
 ## Project layout
 
 ```
@@ -209,6 +242,7 @@ Object-Detection/
 │   ├── train.py                # fine-tuning
 │   ├── evaluate.py             # metrics → docs/
 │   ├── compare.py              # before/after images
+│   ├── benchmark.py            # speed per model and device
 │   ├── screenshot.py           # README screenshots
 │   └── make_demo_gif.py        # README demo GIF
 ├── notebooks/
@@ -248,7 +282,7 @@ Object-Detection/
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                    # everything (90 tests)
+pytest                    # everything (96 tests)
 pytest -m "not slow"      # fast ones only — no model needed, ~1 s
 pytest -m slow            # the ones that download and run the real model
 ```
@@ -258,7 +292,7 @@ Tests come in two groups. The fast ones use a fake model layer
 crossings — can be tested in milliseconds without touching torch. The ones marked
 `slow` run the real weights and are skipped in CI.
 
-Coverage of `src/` from the fast tests alone is **84%** (`tracker` 98%, `video` 95%,
+Coverage of `src/` from the fast tests alone is **83%** (`tracker` 98%, `video` 95%,
 `config` 100%). `detector` and `pipeline` sit lower because their
 model-dependent parts are only exercised by the `slow` tests.
 
@@ -341,7 +375,7 @@ working locally.
 - [x] **M1** — Working app with image, video, webcam and sample tabs
 - [x] **M2** — Object tracking: ByteTrack, unique counts, line crossings, trails
 - [x] **M3** — Fine-tuning on a custom dataset: African Wildlife, mAP50 0.957
-- [x] **M4** — Tests (90 tests, 84% coverage) + GitHub Actions CI
+- [x] **M4** — Tests (96 tests, 83% coverage) + GitHub Actions CI
 - [x] **M5** — Docker image + Hugging Face Spaces deployment pipeline
 
 See [CLAUDE.md](CLAUDE.md) for details and notes from each milestone.

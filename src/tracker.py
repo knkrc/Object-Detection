@@ -162,6 +162,7 @@ class TrackSession:
             tracker=self.tracker_cfg,
             conf=self.conf,
             classes=self.detector.class_ids(self.keep_classes),
+            device=getattr(self.detector, "device", None),
             verbose=False,
         )
         result = results[0]

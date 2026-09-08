@@ -33,6 +33,7 @@ performansı → kendi eğittiğimiz modele geçiş → önce/sonra karşılaşt
 | 📊 **Performans** | mAP tablosu, eğitim grafikleri, önce/sonra karşılaştırması |
 | ⚙️ **Ayarlar** | Model boyutu (n/s/m), güven eşiği ve sınıf filtresi |
 | ⌨️ **CLI** | Toplu işler ve JSON çıktı için `detect.py` |
+| ⏱️ **Benchmark** | Model ve cihaz başına hız — tahmin değil, ölçüm |
 
 ![Tespit sonucu](docs/screenshots/detection.jpg)
 
@@ -185,6 +186,38 @@ sayım, çizgi geçişleri ve her ID'nin ekranda kalma süresi:
 
 Gerisi için `python detect.py --help`.
 
+---
+
+## Ne kadar hızlı?
+
+[`scripts/benchmark.py`](scripts/benchmark.py) ile Apple Silicon bir Mac'te
+ölçüldü. Süreler `Detector.detect()`'i uçtan uca kapsıyor — çıkarım *ve*
+kutuların çizimi, yani kullanıcının gerçekten beklediği süre.
+
+| Model | MPS | CPU |
+|---|---|---|
+| YOLOv8n | 9.3 ms · 107 FPS | 25.5 ms · 39 FPS |
+| YOLOv8s | 15.6 ms · 64 FPS | 50.0 ms · 20 FPS |
+| YOLOv8m | 29.9 ms · 33 FPS | 106.9 ms · 9 FPS |
+
+Model boyutundaki her adım maliyeti kabaca ikiye katlıyor, MPS ise baştan sona
+CPU'dan 3-4 kat hızlı. Bundan iki sonuç çıkıyor:
+
+- **Yayındaki demo CPU'da çalışıyor**, yani ~39 FPS ile YOLOv8n akıcı kalıyor,
+  ~9 FPS ile YOLOv8m kalmazdı. Varsayılanın n olmasının sebebi bu.
+- **Takip, tespitin üstüne yaklaşık %20 ekliyor** — aynı klipte kare başına
+  12.4 ms'ye karşı 10.4 ms. Eşleştirme işi modelin yanında ucuz kalıyor.
+
+```bash
+python scripts/benchmark.py                        # her model, her cihaz
+python scripts/benchmark.py --models yolov8n.pt --devices cpu
+python scripts/benchmark.py --markdown docs/benchmark.md
+```
+
+Ortalama yerine 20 koşunun medyanı raporlanıyor; öncesinde atılan 3 ısınma
+koşusu var — bir cihazdaki ilk çağrı tembel ilklendirmenin bedelini ödüyor ve
+yoksa sonucu domine ediyor.
+
 ## Proje yapısı
 
 ```
@@ -202,6 +235,7 @@ Object-Detection/
 │   ├── train.py                # fine-tune
 │   ├── evaluate.py             # metrikler → docs/
 │   ├── compare.py              # önce/sonra görselleri
+│   ├── benchmark.py            # model ve cihaz başına hız
 │   ├── screenshot.py           # README ekran görüntüleri
 │   └── make_demo_gif.py        # README demo GIF'i
 ├── notebooks/
@@ -241,7 +275,7 @@ Object-Detection/
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                    # hepsi (90 test)
+pytest                    # hepsi (96 test)
 pytest -m "not slow"      # sadece hızlı olanlar — model gerektirmez, ~1 sn
 pytest -m slow            # gerçek modeli indirip çalıştıranlar
 ```
@@ -251,7 +285,7 @@ Testler iki gruba ayrılıyor. Hızlı olanlar sahte bir model katmanı kullanı
 torch'a hiç dokunmadan milisaniyeler içinde test edilebiliyor. `slow` işaretli
 olanlar gerçek ağırlıkları indirip çalıştırıyor ve CI'da atlanıyor.
 
-`src/` kapsamı hızlı testlerle **%84** (`tracker` %98, `video` %95, `config` %100).
+`src/` kapsamı hızlı testlerle **%83** (`tracker` %98, `video` %95, `config` %100).
 `detector` ve `pipeline` düşük görünüyor çünkü model gerektiren kısımlarını
 yalnızca `slow` testler kapsıyor.
 
@@ -334,7 +368,7 @@ devam ediyor.
 - [x] **M1** — Resim, video, webcam ve örneklerle çalışan temel uygulama
 - [x] **M2** — Nesne takibi: ByteTrack, benzersiz sayım, çizgi geçişi, hareket izi
 - [x] **M3** — Kendi veri setiyle fine-tune: African Wildlife, mAP50 0.957
-- [x] **M4** — Testler (90 test, %84 kapsam) + GitHub Actions CI
+- [x] **M4** — Testler (96 test, %83 kapsam) + GitHub Actions CI
 - [x] **M5** — Docker imajı + Hugging Face Spaces deploy hattı
 
 Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).

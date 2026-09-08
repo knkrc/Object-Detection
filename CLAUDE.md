@@ -39,6 +39,8 @@ python scripts/download_samples.py   # fetch the sample images
 python detect.py samples/            # CLI: batch detection
 python detect.py clip.mp4 --track --line horizontal:0.5 --json out.json
 
+python scripts/benchmark.py --markdown docs/benchmark.md   # speed table
+
 python scripts/train.py --epochs 30  # fine-tune (produces models/<name>.pt)
 python scripts/evaluate.py           # metrics -> docs/metrics.{json,md} + docs/plots/
 python scripts/compare.py            # before/after images -> docs/comparison/
@@ -69,6 +71,10 @@ docker compose up --build            # run in a container
   run. `detector.resolve_weights()` / `stash_weights()` handle this, and both
   `Detector` and `scripts/train.py` use them — ultralytics downloads into the
   working directory, so without a shared place the project root gets littered.
+- **`Detector` takes an optional `device`.** Left as None, ultralytics decides,
+  which is what the app wants. Naming one is what makes the benchmark's
+  CPU-vs-MPS comparison possible, and it doubles as an escape hatch when MPS
+  misbehaves on Apple Silicon. `TrackSession` passes it through too.
 - **`src/pipeline.py` holds the batch logic; `detect.py` only parses and prints.**
   The CLI shapes results into plain dicts because its other job is `--json`, and
   keeping the shaping in pure functions (`image_result`, `video_result`,
@@ -511,6 +517,41 @@ unsupported type, `--track` with no video, three malformed `--line` values,
 - Coverage dropped 93% -> 84% because `pipeline.py` is half model-dependent
   code, exercised only by the two `slow` tests. The fast suite still runs in
   0.7 s.
+
+---
+
+### ✅ Benchmark (2026-09-08)
+
+The project reported mAP but never said how fast anything was, which is the
+other half of choosing a model size.
+
+**Added**
+- `scripts/benchmark.py` — per model, per device: median ms and FPS over 20 runs
+  after 3 discarded warm-ups, plus a detection-vs-tracking comparison on a short
+  clip. `--markdown` writes the table straight into `docs/benchmark.md`.
+- `Detector(device=...)` — needed for the CPU/MPS comparison, useful on its own.
+- `tests/test_benchmark.py` — 6 tests on the statistics and the table. Total: **96**.
+
+**Results** (Apple Silicon, `Detector.detect()` end to end, drawing included)
+
+| Model | MPS | CPU |
+|---|---|---|
+| YOLOv8n | 9.3 ms · 107 FPS | 25.5 ms · 39 FPS |
+| YOLOv8s | 15.6 ms · 64 FPS | 50.0 ms · 20 FPS |
+| YOLOv8m | 29.9 ms · 33 FPS | 106.9 ms · 9 FPS |
+
+Each size step roughly doubles the cost; MPS is 3-4x CPU throughout. Tracking
+adds about 20% over detection (12.4 vs 10.4 ms/frame). This is why YOLOv8n is
+the default: the hosted demo runs on CPU, where m would crawl at 9 FPS.
+
+**Fixed along the way**
+- The first version warmed up the video comparison on three frames and reported
+  **tracking as faster than plain detection** — impossible, since tracking is
+  detection plus association. Alternating the order over several rounds showed
+  the real figures (10.5 vs 11.4 ms) and that the whole process needed a longer
+  warm-up. Now each mode warms up over the full clip before being measured.
+- The median is reported rather than the mean, so a single slow run cannot move
+  the headline number, and min/max are printed so a wide spread is visible.
 
 ---
 
