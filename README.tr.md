@@ -11,14 +11,33 @@
 > 🚀 *Canlı demo: [Streamlit Community Cloud](https://share.streamlit.io)'a
 > deploy edip linki buraya ekle.*
 
-YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** yapan Streamlit uygulaması.
-COCO veri setiyle eğitilmiş hazır model sayesinde insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanır.
-Takip modu her nesneye kalıcı bir ID vererek "bu videodan toplam kaç farklı araba geçti" sorusunu cevaplar.
+YOLOv8 ile resim, video ve canlı kamera üzerinde **nesne tespiti ve takibi** —
+hem Streamlit uygulaması hem komut satırı aracı olarak. COCO ile eğitilmiş hazır
+model insan, araba, köpek, çanta gibi **80 farklı nesneyi** tanıyor. Takip modu
+her nesneye kalıcı bir ID vererek tespitin tek başına cevaplayamadığı soruyu
+cevaplıyor: *bu videodan toplam kaç farklı araba geçti?*
 
 ![Demo](docs/demo.gif)
 
 *Örnek görselde tespit → sınıf filtresi (otobüs kutusu kayboluyor) → model
 performansı → kendi eğittiğimiz modele geçiş → önce/sonra karşılaştırması.*
+
+Aynı modeller ve aynı kod terminalden de çalışıyor — toplu işler ve sonuçlara
+bakmak yerine onları okuması gereken her şey için:
+
+```console
+$ python detect.py samples/
+samples/bus.jpg: 3x person, 1x bus
+samples/zidane.jpg: 2x person
+```
+
+```bash
+python detect.py clip.mp4 --track --line horizontal:0.5 --json results.json
+```
+
+İkincisi klip boyunca her nesneyi takip ediyor, karenin ortasından geçen bir
+çizgiyi geçenleri sayıyor ve nesne başına veriyi JSON olarak yazıyor.
+Bkz. [Komut satırı](#komut-satırı).
 
 ---
 
