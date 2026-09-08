@@ -46,9 +46,16 @@ def stash_weights(weights: str) -> None:
 
 
 class Detector:
-    def __init__(self, weights: str = "yolov8n.pt"):
+    def __init__(self, weights: str = "yolov8n.pt", device: str | None = None):
+        """`device` pins where inference runs ("cpu", "mps", "0", ...).
+
+        Left as None, ultralytics picks for itself, which is what the app wants.
+        Naming one is useful for benchmarking, and as an escape hatch when MPS
+        misbehaves on Apple Silicon.
+        """
         self.model = YOLO(resolve_weights(weights))
         self.weights = weights
+        self.device = device
         stash_weights(weights)
 
     @property
@@ -79,6 +86,7 @@ class Detector:
             source=image,
             conf=conf,
             classes=self.class_ids(keep_classes),
+            device=self.device,
             verbose=False,
         )
         result = results[0]
