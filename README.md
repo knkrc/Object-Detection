@@ -6,6 +6,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
+[![Speed](https://img.shields.io/badge/YOLOv8n-~40_FPS_on_CPU-success)](#how-fast-is-it)
+
 > 🚀 *Live demo: deploy on [Streamlit Community Cloud](https://share.streamlit.io)
 > and put the link here.*
 
@@ -203,17 +205,17 @@ the boxes, which is the wait a user actually sees.
 
 | Model | MPS | CPU |
 |---|---|---|
-| YOLOv8n | 9.3 ms · 107 FPS | 25.5 ms · 39 FPS |
-| YOLOv8s | 15.6 ms · 64 FPS | 50.0 ms · 20 FPS |
-| YOLOv8m | 29.9 ms · 33 FPS | 106.9 ms · 9 FPS |
+| YOLOv8n | 9 ms · 107 FPS | 25 ms · 39 FPS |
+| YOLOv8s | 16 ms · 64 FPS | 50 ms · 20 FPS |
+| YOLOv8m | 29 ms · 35 FPS | 100 ms · 10 FPS |
 
 Each step up in model size roughly doubles the cost, and MPS is about 3-4x
 faster than CPU throughout. Two things follow:
 
-- **The hosted demo runs on CPU**, so YOLOv8n at ~39 FPS keeps it responsive
-  while YOLOv8m at ~9 FPS would not. That is why n is the default.
-- **Tracking costs about 20% on top of detection** — 12.4 ms/frame against
-  10.4 on the same clip. The association work is cheap next to the model.
+- **The hosted demo runs on CPU**, so YOLOv8n at ~40 FPS keeps it responsive
+  while YOLOv8m at ~10 FPS would not. That is why n is the default.
+- **Tracking costs about 20% on top of detection** — 11.5 ms/frame against
+  9.7 on the same clip. The association work is cheap next to the model.
 
 ```bash
 python scripts/benchmark.py                        # every model, every device
