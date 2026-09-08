@@ -123,6 +123,10 @@ docker compose up --build            # run in a container
 - **`pythonpath = ["."]` is required in the pytest config.** CI invokes `pytest`
   directly, which — unlike `python -m pytest` — does not add the working
   directory to `sys.path`, and `import src` fails.
+- **The READMEs quote real CLI output, so changing `describe()` dates them.**
+  The block near the top of both files is copied verbatim from
+  `python detect.py samples/`. If the wording of a result line changes, re-run it
+  and paste again — a made-up terminal transcript is worse than none.
 - **When UI text changes, refresh the images.** `docs/screenshots/`,
   `docs/demo.gif` and `docs/comparison/` show the app's screen and output, so
   they go stale when the wording changes. Three commands:

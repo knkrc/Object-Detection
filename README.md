@@ -11,16 +11,33 @@
 > 🚀 *Live demo: deploy on [Streamlit Community Cloud](https://share.streamlit.io)
 > and put the link here.*
 
-A Streamlit app for **object detection and tracking** on images, video and a live
-camera, built on YOLOv8. The pretrained COCO model recognises **80 object classes** —
-people, cars, dogs, handbags and so on. Tracking mode assigns each object a
-persistent ID, which answers the question detection alone cannot: *how many
-distinct cars passed through this video?*
+**Object detection and tracking** on images, video and a live camera, built on
+YOLOv8 — as a Streamlit app and as a command line tool. The pretrained COCO model
+recognises **80 object classes**: people, cars, dogs, handbags and so on. Tracking
+mode assigns each object a persistent ID, which answers the question detection
+alone cannot: *how many distinct cars passed through this video?*
 
 ![Demo](docs/demo.gif)
 
 *Detection on a sample image → filtering to one class (the bus box disappears) →
 model performance metrics → switching to our fine-tuned model → before/after comparison.*
+
+The same models and the same code run from a terminal, for batch work and for
+anything that has to read the results rather than look at them:
+
+```console
+$ python detect.py samples/
+samples/bus.jpg: 3x person, 1x bus
+samples/zidane.jpg: 2x person
+```
+
+```bash
+python detect.py clip.mp4 --track --line horizontal:0.5 --json results.json
+```
+
+That second one tracks every object across the clip, counts what crosses a line
+through the middle of the frame, and writes the per-object data as JSON.
+See [Command line](#command-line).
 
 ---
 
