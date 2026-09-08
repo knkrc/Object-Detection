@@ -36,6 +36,9 @@ source .venv/bin/activate        # activate the environment
 streamlit run app.py             # run the app
 python scripts/download_samples.py   # fetch the sample images
 
+python detect.py samples/            # CLI: batch detection
+python detect.py clip.mp4 --track --line horizontal:0.5 --json out.json
+
 python scripts/train.py --epochs 30  # fine-tune (produces models/<name>.pt)
 python scripts/evaluate.py           # metrics -> docs/metrics.{json,md} + docs/plots/
 python scripts/compare.py            # before/after images -> docs/comparison/
@@ -66,6 +69,11 @@ docker compose up --build            # run in a container
   run. `detector.resolve_weights()` / `stash_weights()` handle this, and both
   `Detector` and `scripts/train.py` use them — ultralytics downloads into the
   working directory, so without a shared place the project root gets littered.
+- **`src/pipeline.py` holds the batch logic; `detect.py` only parses and prints.**
+  The CLI shapes results into plain dicts because its other job is `--json`, and
+  keeping the shaping in pure functions (`image_result`, `video_result`,
+  `parse_line`, `iter_sources`) means most of it is tested without a model. This
+  is the same split as `app.py` / `src/`: the entry point owns presentation only.
 - **Video processing sits in `src/video.py` and is *work-agnostic*.**
   `process_video` does not know what it is doing; it calls the
   `on_frame(frame) -> frame` function it was given. Detection and tracking share
@@ -107,6 +115,13 @@ docker compose up --build            # run in a container
   they go stale when the wording changes. Three commands:
   `scripts/screenshot.py`, `scripts/make_demo_gif.py`, `scripts/compare.py`.
   If metric keys change, `scripts/evaluate.py` too.
+- **The CLI writes progress only to a terminal.** `process_video`'s callback
+  overwrites one line with `\r`; piped or redirected, every percentage would land
+  on its own line in the log, so `detect.py` passes no callback unless
+  `sys.stdout.isatty()`.
+- **A folder contributes only media; a named file must be media.** `iter_sources`
+  skips a README sitting next to the images, but errors on `detect.py README.md` —
+  naming a file is a clear intent, and silently ignoring it would be worse.
 - **`is_deployed()` hides the webcam tab on a server.** `cv2.VideoCapture(0)`
   opens the camera of *whichever machine is running the app*; on a server that
   would be the server's camera, not the visitor's. The tab is not even created —
@@ -115,7 +130,10 @@ docker compose up --build            # run in a container
   `DEPLOYED` (our Dockerfile), `SPACE_ID` (Hugging Face), and the `/mount/src`
   checkout path (Streamlit Community Cloud, which sets no env var at all).
 - **The Docker image is self-contained.** Model weights, samples and metrics are
-  copied in; the container downloads nothing on first start. torch is installed
+  copied in; the container downloads nothing on first start. `detect.py` rides
+  along so `docker run ... python detect.py` works for batch jobs, though the
+  image's CMD is still the app. The Space does not get it — a visitor has no
+  shell there. torch is installed
   from the CPU index (the PyPI build pulls CUDA packages on Linux).
 - **The Space is not a copy of the repo.** `deploy/push_to_hf.sh` pushes only
   what the app needs to run; training scripts, tests, datasets, the demo GIF and
@@ -463,6 +481,39 @@ tests") — this is a log, and later entries record how those figures changed.
 
 ---
 
+### ✅ CLI (2026-09-08)
+
+The first item from the idea pool. The `src/` layer was already UI-agnostic, so
+this mostly proved that the architecture pays off: `detector`, `tracker` and
+`video` were used unchanged.
+
+**Added**
+- `src/pipeline.py` — source expansion (`iter_sources`), `--line` parsing, the
+  per-image and per-video runners, and the JSON shaping. Results are plain dicts
+  because `--json` is half the point.
+- `detect.py` — argparse and printing, nothing else. Handles folders, several
+  paths at once, `--track`, `--line`, `--classes`, `--conf`, `--stride`,
+  `--output`, `--json`, `--quiet`.
+- `tests/test_pipeline.py` — 23 tests, 21 of them without a model. Total: **90**.
+
+**Verified** end to end: a folder of images (`3x person, 1x bus` on bus.jpg,
+matching the app), a synthetic video with `--track --line vertical:0.5`
+(`right: 4, left: 0`, 5 distinct objects), and every error path — missing file,
+unsupported type, `--track` with no video, three malformed `--line` values,
+`--stride 0`. All exit 2 with a readable message.
+
+**Decisions worth remembering**
+- One unreadable file does not abort the batch; it prints to stderr and the run
+  continues, so a bad frame in a folder of 500 does not cost the other 499.
+- Without `--output` the frames are still walked (there is no other way to
+  track), but the annotated video is written to a dotfile and deleted. Saves
+  disk, not time.
+- Coverage dropped 93% -> 84% because `pipeline.py` is half model-dependent
+  code, exercised only by the two `slow` tests. The fast suite still runs in
+  0.7 s.
+
+---
+
 ## Upcoming
 
 ### ⚠️ `packages.txt` on Streamlit Community Cloud
@@ -512,7 +563,6 @@ to create the Space with CPU basic hardware from the start.
 the GitHub name for a while and every visitor got a 401.
 
 ### 💡 Idea pool (unordered)
-- A CLI (`python detect.py --image foo.jpg`) for batch work.
 - Heatmap / density visualisation.
 - Exporting detection results as JSON (the tracking CSV came in M2).
 - A BoT-SORT option: remembers a long-lost object through re-ID.

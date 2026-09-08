@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 
 # The app and the assets shipped with it. Model weights are baked in so the
 # container does not have to download anything on first start.
-COPY --chown=user app.py .
+COPY --chown=user app.py detect.py .
 COPY --chown=user src/ src/
 COPY --chown=user models/ models/
 COPY --chown=user samples/ samples/
