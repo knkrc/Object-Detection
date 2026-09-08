@@ -34,6 +34,7 @@ model performance metrics → switching to our fine-tuned model → before/after
 | 🧠 **Your own model** | A fine-tuned model, selectable in the sidebar under "Custom:" |
 | 📊 **Performance** | mAP tables, training curves, before/after comparison |
 | ⚙️ **Settings** | Model size (n/s/m), confidence threshold, class filter |
+| ⌨️ **CLI** | `detect.py` for batch runs and JSON output |
 
 ![Detection result](docs/screenshots/detection.jpg)
 
@@ -136,14 +137,71 @@ To train on a GPU, use [`notebooks/train_colab.ipynb`](notebooks/train_colab.ipy
 the same run takes minutes on Colab's free T4. Drop the resulting `best.pt` into
 `models/` and the app will pick it up on its own.
 
+---
+
+## Command line
+
+The same `src/` modules the app uses also drive a CLI, for batch work and for
+anything that needs to read the results rather than look at them:
+
+```bash
+python detect.py samples/                            # detect, print a summary
+python detect.py samples/bus.jpg --output out/       # write the annotated copy
+python detect.py clip.mp4 --track --line horizontal:0.5
+python detect.py samples/ --json results.json --classes person car
+```
+
+Folders are expanded to the media inside them, and one unreadable file does not
+lose the results of the others. `--json` writes a document that records the
+settings alongside the results:
+
+```json
+{
+  "model": "yolov8n.pt",
+  "confidence": 0.35,
+  "classes": null,
+  "results": [
+    {
+      "source": "samples/bus.jpg",
+      "type": "image",
+      "width": 810,
+      "height": 1080,
+      "counts": {"person": 3, "bus": 1},
+      "detections": [
+        {"label": "bus", "confidence": 0.8729, "box": [22, 231, 804, 756]}
+      ]
+    }
+  ]
+}
+```
+
+With `--track`, a video's entry carries the tracking summary instead — unique
+counts, line crossings and how long each ID stayed on screen:
+
+```json
+"tracking": {
+  "unique": {"person": 3, "bus": 1},
+  "total_objects": 5,
+  "line": {"right": 4, "left": 0},
+  "objects": [
+    {"id": 1, "object": "person", "seconds": 2.5, "frames": 50,
+     "first_frame": 0, "last_frame": 49}
+  ]
+}
+```
+
+`python detect.py --help` lists the rest.
+
 ## Project layout
 
 ```
 Object-Detection/
 ├── app.py                      # Streamlit UI (all tabs)
+├── detect.py                   # command line interface
 ├── src/
 │   ├── config.py               # paths, model list, defaults
 │   ├── detector.py             # YOLO wrapper — detect() lives here
+│   ├── pipeline.py             # batch processing behind the CLI
 │   ├── tracker.py              # tracking session, line counter, trails
 │   └── video.py                # frame-by-frame video processing
 ├── scripts/
@@ -190,7 +248,7 @@ Object-Detection/
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                    # everything (65 tests)
+pytest                    # everything (90 tests)
 pytest -m "not slow"      # fast ones only — no model needed, ~1 s
 pytest -m slow            # the ones that download and run the real model
 ```
@@ -200,9 +258,9 @@ Tests come in two groups. The fast ones use a fake model layer
 crossings — can be tested in milliseconds without touching torch. The ones marked
 `slow` run the real weights and are skipped in CI.
 
-Coverage of `src/` from the fast tests alone is **93%** (`tracker` 98%, `video` 95%,
-`config` 100%). `detector` sits lower because its model-dependent parts are only
-exercised by the `slow` tests.
+Coverage of `src/` from the fast tests alone is **84%** (`tracker` 98%, `video` 95%,
+`config` 100%). `detector` and `pipeline` sit lower because their
+model-dependent parts are only exercised by the `slow` tests.
 
 **CI** runs on every push and pull request: ruff (lint + format) and the fast test
 suite on Python 3.11 / 3.12 / 3.13. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
@@ -283,7 +341,7 @@ working locally.
 - [x] **M1** — Working app with image, video, webcam and sample tabs
 - [x] **M2** — Object tracking: ByteTrack, unique counts, line crossings, trails
 - [x] **M3** — Fine-tuning on a custom dataset: African Wildlife, mAP50 0.957
-- [x] **M4** — Tests (65 tests, 93% coverage) + GitHub Actions CI
+- [x] **M4** — Tests (90 tests, 84% coverage) + GitHub Actions CI
 - [x] **M5** — Docker image + Hugging Face Spaces deployment pipeline
 
 See [CLAUDE.md](CLAUDE.md) for details and notes from each milestone.

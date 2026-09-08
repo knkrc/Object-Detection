@@ -32,6 +32,7 @@ performansı → kendi eğittiğimiz modele geçiş → önce/sonra karşılaşt
 | 🧠 **Kendi modelin** | Fine-tune edilmiş model, arayüzde "Custom:" olarak seçilebilir |
 | 📊 **Performans** | mAP tablosu, eğitim grafikleri, önce/sonra karşılaştırması |
 | ⚙️ **Ayarlar** | Model boyutu (n/s/m), güven eşiği ve sınıf filtresi |
+| ⌨️ **CLI** | Toplu işler ve JSON çıktı için `detect.py` |
 
 ![Tespit sonucu](docs/screenshots/detection.jpg)
 
@@ -130,14 +131,70 @@ GPU'da eğitmek için [`notebooks/train_colab.ipynb`](notebooks/train_colab.ipyn
 Colab'ın ücretsiz T4'ünde aynı eğitim dakikalar sürer. İnen `best.pt` dosyasını
 `models/` klasörüne koyman yeterli; arayüz onu otomatik bulur.
 
+---
+
+## Komut satırı
+
+Uygulamanın kullandığı `src/` modülleri bir CLI'yi de besliyor — toplu işler ve
+sonuçlara bakmak yerine onları okuması gereken her şey için:
+
+```bash
+python detect.py samples/                            # tespit et, özet yazdır
+python detect.py samples/bus.jpg --output out/       # çizilmiş kopyayı yaz
+python detect.py clip.mp4 --track --line horizontal:0.5
+python detect.py samples/ --json sonuclar.json --classes person car
+```
+
+Klasörler içindeki medyaya açılıyor ve okunamayan bir dosya diğerlerinin
+sonuçlarını götürmüyor. `--json` ayarları sonuçlarla birlikte kaydediyor:
+
+```json
+{
+  "model": "yolov8n.pt",
+  "confidence": 0.35,
+  "classes": null,
+  "results": [
+    {
+      "source": "samples/bus.jpg",
+      "type": "image",
+      "width": 810,
+      "height": 1080,
+      "counts": {"person": 3, "bus": 1},
+      "detections": [
+        {"label": "bus", "confidence": 0.8729, "box": [22, 231, 804, 756]}
+      ]
+    }
+  ]
+}
+```
+
+`--track` ile videonun kaydı bunun yerine takip özetini taşıyor — benzersiz
+sayım, çizgi geçişleri ve her ID'nin ekranda kalma süresi:
+
+```json
+"tracking": {
+  "unique": {"person": 3, "bus": 1},
+  "total_objects": 5,
+  "line": {"right": 4, "left": 0},
+  "objects": [
+    {"id": 1, "object": "person", "seconds": 2.5, "frames": 50,
+     "first_frame": 0, "last_frame": 49}
+  ]
+}
+```
+
+Gerisi için `python detect.py --help`.
+
 ## Proje yapısı
 
 ```
 Object-Detection/
 ├── app.py                      # Streamlit arayüzü (tüm sekmeler)
+├── detect.py                   # komut satırı arayüzü
 ├── src/
 │   ├── config.py               # yollar, model listesi, varsayılan ayarlar
 │   ├── detector.py             # YOLO sarmalayıcı — detect() burada
+│   ├── pipeline.py             # CLI'nin arkasındaki toplu işleme
 │   ├── tracker.py              # takip oturumu, çizgi sayacı, izler
 │   └── video.py                # video dosyasını kare kare işleme
 ├── scripts/
@@ -184,7 +241,7 @@ Object-Detection/
 ```bash
 pip install -r requirements-dev.txt
 
-pytest                    # hepsi (65 test)
+pytest                    # hepsi (90 test)
 pytest -m "not slow"      # sadece hızlı olanlar — model gerektirmez, ~1 sn
 pytest -m slow            # gerçek modeli indirip çalıştıranlar
 ```
@@ -194,8 +251,9 @@ Testler iki gruba ayrılıyor. Hızlı olanlar sahte bir model katmanı kullanı
 torch'a hiç dokunmadan milisaniyeler içinde test edilebiliyor. `slow` işaretli
 olanlar gerçek ağırlıkları indirip çalıştırıyor ve CI'da atlanıyor.
 
-`src/` kapsamı hızlı testlerle **%93** (`tracker` %98, `video` %95, `config` %100). `detector`
-düşük görünüyor çünkü model gerektiren kısımları yalnızca `slow` testler kapsıyor.
+`src/` kapsamı hızlı testlerle **%84** (`tracker` %98, `video` %95, `config` %100).
+`detector` ve `pipeline` düşük görünüyor çünkü model gerektiren kısımlarını
+yalnızca `slow` testler kapsıyor.
 
 **CI** her push ve PR'da çalışıyor: ruff (lint + format) ve Python 3.11 / 3.12 / 3.13
 üzerinde hızlı test paketi. Bkz. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
@@ -276,7 +334,7 @@ devam ediyor.
 - [x] **M1** — Resim, video, webcam ve örneklerle çalışan temel uygulama
 - [x] **M2** — Nesne takibi: ByteTrack, benzersiz sayım, çizgi geçişi, hareket izi
 - [x] **M3** — Kendi veri setiyle fine-tune: African Wildlife, mAP50 0.957
-- [x] **M4** — Testler (65 test, %93 kapsam) + GitHub Actions CI
+- [x] **M4** — Testler (90 test, %84 kapsam) + GitHub Actions CI
 - [x] **M5** — Docker imajı + Hugging Face Spaces deploy hattı
 
 Detaylar ve her milestone'un notları için [CLAUDE.md](CLAUDE.md).
