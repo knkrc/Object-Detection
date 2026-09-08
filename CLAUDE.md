@@ -71,6 +71,13 @@ docker compose up --build            # run in a container
   run. `detector.resolve_weights()` / `stash_weights()` handle this, and both
   `Detector` and `scripts/train.py` use them — ultralytics downloads into the
   working directory, so without a shared place the project root gets littered.
+- **The speed badge is generated, not typed.** `benchmark.py --markdown` writes
+  the badge line into `docs/benchmark.md` alongside the table, so re-measuring
+  hands you the line to paste. It reports the CPU figure (MPS means nothing to a
+  reader on Linux) for the smallest model (the app's default), rounded to the
+  nearest 5 and marked "~" — run-to-run variance moves the exact number by a
+  frame or two, and a badge needing an edit every run is one nobody keeps
+  current. The README table comes from the same file; round it too.
 - **`Detector` takes an optional `device`.** Left as None, ultralytics decides,
   which is what the app wants. Naming one is what makes the benchmark's
   CPU-vs-MPS comparison possible, and it doubles as an escape hatch when MPS
@@ -543,6 +550,12 @@ other half of choosing a model size.
 Each size step roughly doubles the cost; MPS is 3-4x CPU throughout. Tracking
 adds about 20% over detection (12.4 vs 10.4 ms/frame). This is why YOLOv8n is
 the default: the hosted demo runs on CPU, where m would crawl at 9 FPS.
+
+**Badge**
+`README.md` and `README.tr.md` carry a speed badge linking to the table. Both the
+badge and the table are derived from `docs/benchmark.md`, which the script
+writes — three places, one source. The figures are rounded so ordinary variance
+does not force an edit.
 
 **Fixed along the way**
 - The first version warmed up the video comparison on three frames and reported

@@ -123,6 +123,33 @@ def make_frames(image, count: int, width: int = 640) -> list:
     return [np.roll(scaled, i * 8, axis=1) for i in range(count)]
 
 
+def as_badge(rows: list[dict]) -> str:
+    """The README badge line, derived from what was just measured.
+
+    CPU rather than MPS: the hosted demo runs on CPU, and a number that only
+    holds on Apple Silicon means nothing to someone reading from Linux. The
+    smallest model, because that is the default the app ships with.
+
+    Emitting it here keeps the badge honest — re-run the benchmark and you get
+    the line to paste, instead of a claim that quietly goes stale.
+
+    Rounded to the nearest 5 and marked "~": run-to-run variance moves the exact
+    figure by a frame or two, and a badge that has to be edited every time it is
+    measured is a badge nobody keeps current. The precise table is one click away.
+    """
+    cpu = [r for r in rows if r["device"] == "cpu"]
+    if not cpu:
+        return ""
+
+    row = min(cpu, key=lambda r: r["ms"])
+    label = row["model"].replace(".pt", "").replace("-", "--")
+    fps = max(5, round(row["fps"] / 5) * 5)
+    return (
+        f"[![Speed](https://img.shields.io/badge/{label}-~{fps}_FPS_on_CPU-success)]"
+        "(#how-fast-is-it)"
+    )
+
+
 def as_markdown(rows: list[dict], machine: str) -> str:
     """The table that goes in the README."""
     lines = [
@@ -134,6 +161,10 @@ def as_markdown(rows: list[dict], machine: str) -> str:
     ]
     for row in rows:
         lines.append(f"| {row['model']} | {row['device']} | {row['ms']} | {row['fps']} |")
+
+    badge = as_badge(rows)
+    if badge:
+        lines += ["", "README badge for these numbers:", "", "```markdown", badge, "```"]
     return "\n".join(lines) + "\n"
 
 

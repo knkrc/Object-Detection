@@ -6,6 +6,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED)](Dockerfile)
+[![Hız](https://img.shields.io/badge/YOLOv8n-~40_FPS_on_CPU-success)](#ne-kadar-hızlı)
+
 > 🚀 *Canlı demo: [Streamlit Community Cloud](https://share.streamlit.io)'a
 > deploy edip linki buraya ekle.*
 
@@ -196,17 +198,17 @@ kutuların çizimi, yani kullanıcının gerçekten beklediği süre.
 
 | Model | MPS | CPU |
 |---|---|---|
-| YOLOv8n | 9.3 ms · 107 FPS | 25.5 ms · 39 FPS |
-| YOLOv8s | 15.6 ms · 64 FPS | 50.0 ms · 20 FPS |
-| YOLOv8m | 29.9 ms · 33 FPS | 106.9 ms · 9 FPS |
+| YOLOv8n | 9 ms · 107 FPS | 25 ms · 39 FPS |
+| YOLOv8s | 16 ms · 64 FPS | 50 ms · 20 FPS |
+| YOLOv8m | 29 ms · 35 FPS | 100 ms · 10 FPS |
 
 Model boyutundaki her adım maliyeti kabaca ikiye katlıyor, MPS ise baştan sona
 CPU'dan 3-4 kat hızlı. Bundan iki sonuç çıkıyor:
 
-- **Yayındaki demo CPU'da çalışıyor**, yani ~39 FPS ile YOLOv8n akıcı kalıyor,
-  ~9 FPS ile YOLOv8m kalmazdı. Varsayılanın n olmasının sebebi bu.
+- **Yayındaki demo CPU'da çalışıyor**, yani ~40 FPS ile YOLOv8n akıcı kalıyor,
+  ~10 FPS ile YOLOv8m kalmazdı. Varsayılanın n olmasının sebebi bu.
 - **Takip, tespitin üstüne yaklaşık %20 ekliyor** — aynı klipte kare başına
-  12.4 ms'ye karşı 10.4 ms. Eşleştirme işi modelin yanında ucuz kalıyor.
+  11.5 ms'ye karşı 9.7 ms. Eşleştirme işi modelin yanında ucuz kalıyor.
 
 ```bash
 python scripts/benchmark.py                        # her model, her cihaz
